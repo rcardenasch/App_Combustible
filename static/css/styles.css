@@ -1,0 +1,630 @@
+/* ----------------------------------------------------------
+   SISTEMA FUA — CSS GLOBAL
+----------------------------------------------------------- */
+/* ==========================================================
+   🎨 VARIABLES DINÁMICAS (LIGHT / DARK)
+========================================================== */
+:root {
+
+    /* Light Mode */
+    --bg-body: #f1f5f9;
+    --bg-card: #ffffff;
+    --bg-sidebar: #05478a;
+    --bg-navbar: #ffffff;
+
+    --text-main: #4f5153;
+    --text-muted: #64748b;
+
+    --border-color: #040405;
+
+    --primary: #2563eb;
+    --primary-dark: #1e40af;
+
+    --success: #16a34a;
+    --danger: #dc2626;
+    --warning: #f59e0b;
+    --text-sidebar: #ffffff;
+}
+
+/* ==========================================================
+   🌙 DARK MODE VARIABLES
+========================================================== */
+body.dark-mode {
+
+    --bg-body: #0f172a;
+    --bg-card: #1e293b;
+    --bg-sidebar: #0b1220;
+    --bg-navbar: #1e293b;
+
+    --text-main: #f1f5f9;
+    --text-muted: #5a5e63;
+    --text-sidebar: #f1f5f9;
+
+    --border-color: #334155;
+
+    --primary: #3b82f6;
+    --primary-dark: #2563eb;
+}
+body {
+    font-family: 'Inter', system-ui, -apple-system;
+    background: var(--bg-body);
+    color: var(--text-main);
+    margin: 0;
+    transition: background .3s ease, color .3s ease;
+}
+body.dark-mode .sidebar a:hover {
+    background: rgba(59,130,246,0.15);
+}
+/* ==========================================================
+   SIDEBAR DINÁMICO (LIGHT / DARK)
+========================================================== */
+
+.sidebar {
+    width: 260px;
+    height: 100vh;
+    position: fixed;
+    top: 0;
+    left: 0;
+    background: var(--bg-sidebar);
+    color: var(--text-sidebar);
+    padding-top: 20px;
+    transition: all 0.3s ease;
+    z-index: 1000;
+    overflow-x: hidden;
+}
+
+.sidebar a {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    color: var(--text-sidebar);
+    padding: 12px 22px;
+    text-decoration: none;
+    font-size: 15px;
+    transition: all 0.2s ease;
+}
+
+.sidebar a:hover {
+    background: rgba(255,255,255,0.08);
+}
+
+
+/* COLAPSADO (desktop) */
+.sidebar.collapsed {
+    width: 70px;
+}
+
+
+/* ==========================================================
+   CONTENT
+========================================================== */
+
+.content {
+    margin-left: 260px;
+    padding: 20px;
+    transition: all 0.3s ease;
+}
+
+.content.collapsed {
+    margin-left: 70px;
+}
+
+.content.full {
+    margin-left: 0;
+}
+.navbar {
+    background: var(--bg-navbar) !important;
+    transition: background .3s ease;
+}
+.card {
+    background: var(--bg-card);
+    color: var(--text-main);
+    border-radius: 16px;
+    border: 1px solid var(--border-color);
+    box-shadow: 0 8px 20px rgba(0,0,0,.05);
+    transition: all .3s ease;
+}
+
+.table {
+    background: var(--bg-card);
+    color: var(--text-main);
+}
+
+.table thead {
+    background: rgba(0,0,0,.04);
+}
+
+body.dark-mode .table thead {
+    background: #0f172a;
+}
+
+
+.form-control,
+.form-select {
+    background: var(--bg-card);
+    color: var(--text-main);
+    border: 1px solid var(--border-color);
+}
+
+.form-control:focus {
+    border-color: var(--primary);
+    box-shadow: 0 0 0 3px rgba(37,99,235,.2);
+}
+/* ================================
+   FIX LOGIN CENTRADO (BASE.HTML)
+================================ */
+body:has(.login-wrapper) .content {
+    margin-left: 0 !important;
+    padding: 0 !important;
+}
+
+/* ================================
+   LOGIN AJUSTES FINALES
+================================ */
+
+/* Evita scroll innecesario */
+body:has(.login-wrapper) {
+    overflow: hidden;
+}
+
+/* Login más compacto */
+.login-card {
+    max-width: 400px;
+}
+
+/* Inputs con mejor alineación */
+.login-card .input-group-text {
+    padding-left: 14px;
+    padding-right: 10px;
+    font-size: 16px;
+}
+
+/* Labels más elegantes */
+.login-card .form-label {
+    font-size: 13px;
+    font-weight: 500;
+    color: #475569;
+}
+
+/* Dark mode labels */
+.dark-mode .login-card .form-label {
+    color: #cbd5f5;
+}
+
+.sidebar .text {
+    white-space: nowrap;
+}
+/* ================================
+   MOBILE (RESPONSIVE)
+================================ */
+@media (max-width: 768px) {
+
+    .sidebar {
+        left: -260px; /* inicia oculto */
+        position: fixed;
+        z-index: 1050;
+        box-shadow: 0 0 25px rgba(0,0,0,.3);
+    }
+
+    .sidebar.show {
+        left: 0;
+    }
+
+    .content {
+        margin-left: 0 !important;
+    }
+}
+
+.sidebar.mobile-hidden {
+    left: -260px;
+}
+.overlay {
+    position: fixed;
+    inset: 0;
+    background: rgba(0,0,0,.4);
+    display: none;
+    z-index: 900;
+}
+
+.overlay.show {
+    display: block;
+}
+/* ----------------------------------------------------------
+   TARJETAS DEL DASHBOARD
+----------------------------------------------------------- */
+.card {
+    border-radius: 16px;
+    border: none;
+    background: var(--bg-card);
+    color: var(--text-main);
+}
+
+.card:hover {
+    transform: translateY(-3px);
+}
+
+.card h2 {
+    font-size: 38px;
+    font-weight: 700;
+}
+
+/* ----------------------------------------------------------
+   TABLAS
+----------------------------------------------------------- */
+.table {
+    background: var(--bg-card);
+    color: var(--text-main);
+}
+
+.table thead {
+    background: rgba(0,0,0,.04);
+}
+
+body.dark-mode .table thead {
+    background: #0f172a;
+}
+
+.table th {
+    font-size: 13px;
+    text-transform: uppercase;
+    letter-spacing: .04em;
+    color: var(--text-muted);
+}
+
+.table td {
+    font-size: 14.5px;
+    vertical-align: middle;
+}
+
+.table-hover tbody tr {
+    transition: background .2s ease;
+}
+
+.table-hover tbody tr:hover {
+    background: #f8fafc;
+}
+
+/* ----------------------------------------------------------
+🧩 FORMULARIOS ELEGANTES
+----------------------------------------------------------- */
+.form-control,
+.form-select {
+    border-radius: 12px;
+    padding: 10px 2.5rem 10px 14px; /* top right bottom left */
+    font-size: 14.5px;
+    background-position: right 0.75rem center;
+    background-size: 14px;
+}
+
+
+.form-control:focus,
+.form-select:focus {
+    border-color: var(--primary);
+    box-shadow: 0 0 0 3px rgba(37,99,235,.15);
+}
+
+
+/* ----------------------------------------------------------
+   BOTONES PERSONALIZADOS
+----------------------------------------------------------- */
+.btn {
+    border-radius: 12px;
+    padding: 8px 18px;
+    font-weight: 500;
+    transition: all .25s ease;
+}
+
+.btn-primary {
+    background: var(--primary);
+    border: none;
+}
+
+.btn-primary:hover {
+    background: var(--primary-dark);
+    transform: translateY(-1px);
+}
+
+.btn-danger {
+    background: var(--danger);
+    border: none;
+}
+
+.btn-warning {
+    background: var(--warning);
+    border: none;
+}
+/* ----------------------------------------------------------
+POPUP / MODAL PROFESIONAL
+----------------------------------------------------------- */
+.modal-content {
+    background: var(--bg-card);
+    color: var(--text-main);
+    border-radius: 18px;
+    border: none;
+    box-shadow: 0 30px 60px rgba(0,0,0,.3);
+}
+
+.modal-header {
+    border-bottom: 1px solid var(--border);
+}
+
+.modal-title {
+    font-weight: 600;
+}
+
+/* ----------------------------------------------------------
+   ANIMACION
+----------------------------------------------------------- */
+
+.modal.fade .modal-dialog {
+    transform: scale(.95);
+    transition: transform .25s ease;
+}
+
+.modal.show .modal-dialog {
+    transform: scale(1);
+}
+
+/* ----------------------------------------------------------
+   ALERTAS
+----------------------------------------------------------- */
+.alert {
+    border-radius: 14px;
+    font-size: 14.5px;
+    border: none;
+    box-shadow: 0 6px 16px rgba(0,0,0,.08);
+}
+
+
+/* ----------------------------------------------------------
+   🖱️ SCROLL MODERNO
+----------------------------------------------------------- */
+::-webkit-scrollbar {
+    width: 10px;
+}
+
+::-webkit-scrollbar-thumb {
+    background: linear-gradient(180deg, #2563eb, #1e40af);
+    border-radius: 10px;
+}
+
+
+/* ----------------------------------------------------------
+   LOGIN
+----------------------------------------------------------- */
+/* ----------------------------------------------------------
+   LOGIN PREMIUM
+----------------------------------------------------------- */
+
+.login-wrapper {
+    min-height: 100vh;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: linear-gradient(135deg, #1e40af, #2563eb, #38bdf8);
+    padding: 20px;
+}
+
+.login-card {
+    width: 100%;
+    max-width: 420px;
+    background: var(--bg-card);
+    color: var(--text-main); 
+    border-radius: 22px;
+    padding: 35px 32px;
+    box-shadow:
+        0 25px 60px rgba(0,0,0,.25),
+        0 10px 25px rgba(0,0,0,.15);
+    animation: loginFade 0.6s ease;
+}
+
+/* Animación suave */
+@keyframes loginFade {
+    from {
+        opacity: 0;
+        transform: translateY(20px) scale(.97);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0) scale(1);
+    }
+}
+.login-card h3 {
+    font-weight: 700;
+    text-align: center;
+    margin-bottom: 8px;
+}
+
+.login-card p {
+    text-align: center;
+    font-size: 14px;
+    color: #64748b;
+    margin-bottom: 25px;
+}
+.login-card .form-control {
+    border-radius: 14px;
+    padding: 12px 14px;
+    font-size: 14.5px;
+    border: 1px solid #e5e7eb;
+    transition: all .25s ease;
+}
+
+.login-card .form-control:focus {
+    border-color: #2563eb;
+    box-shadow: 0 0 0 4px rgba(37,99,235,.18);
+}
+.login-card .btn-primary {
+    width: 100%;
+    padding: 12px;
+    border-radius: 14px;
+    font-weight: 600;
+    letter-spacing: .02em;
+    background: linear-gradient(135deg, #2563eb, #1e40af);
+    border: none;
+    transition: all .3s ease;
+}
+
+.login-card .btn-primary:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 12px 28px rgba(37,99,235,.45);
+}
+.input-group-text {
+    background: transparent;
+    border: none;
+    color: #64748b;
+}
+.dark-mode .login-wrapper {
+    background: linear-gradient(135deg, #020617, #0f172a);
+}
+
+
+@media (max-width: 576px) {
+    .login-card {
+        padding: 28px 22px;
+        border-radius: 18px;
+    }
+}
+
+/* =========================================
+   FIX TEXTOS GRISES EN MODALES (DARK MODE)
+========================================= */
+
+.modal-content .text-muted,
+.modal-content small,
+.modal-content .form-text {
+    color: var(--text-muted) !important;
+}
+
+
+.sidebar.hidden {
+    left: -260px;
+}
+
+.content.full {
+    margin-left: 0;
+}
+
+.dataTables_wrapper .dataTables_filter input {
+    border-radius: 8px;
+    border: 1px solid #ddd;
+    padding: 5px 10px;
+}
+
+.dataTables_wrapper .dataTables_length select {
+    border-radius: 8px;
+    padding: 5px;
+}
+
+.table {
+    border-radius: 10px;
+    overflow: hidden;
+}
+
+.card {
+    border-radius: 14px;
+}
+
+.categoria-item {
+    cursor: pointer;
+}
+
+.categoria-item.active {
+    background-color: #dbeafe;
+}
+
+/* Hover estilo moderno */
+.cliente-item {
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+
+/* Hover efecto */
+.cliente-item:hover,
+.producto-item:hover {
+    background-color: #f8f9fa;
+    transform: scale(1.02);
+    box-shadow: 0 2px 6px rgba(0,0,0,0.08);
+}
+
+/* Hover estilo moderno */
+.producto-item {
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+
+
+/* Icono oculto por defecto */
+.icono-seleccionar {
+    opacity: 0;
+    transition: opacity 0.2s ease, transform 0.2s ease;
+    color: #0d6efd; /* azul tipo Telegram */
+}
+
+/* Mostrar icono al hover */
+.cliente-item:hover .icono-seleccionar {
+    opacity: 1;
+    transform: translateX(5px);
+}
+
+/* Mostrar icono al hover */
+.producto-item:hover .icono-seleccionar {
+    opacity: 1;
+    transform: translateX(5px);
+}
+
+
+/* =========================================
+   🌙 SELECTS DARK MODE FIX
+========================================= */
+
+body.dark-mode select,
+body.dark-mode .form-select {
+
+    background-color: var(--bg-card) !important;
+    color: var(--text-main) !important;
+    border: 1px solid var(--border-color) !important;
+
+    /* 🔥 mejora visibilidad */
+    appearance: none;
+    -webkit-appearance: none;
+    -moz-appearance: none;
+
+    /* 🎯 Flecha personalizada */
+    background-image: url("data:image/svg+xml,%3Csvg fill='%23f1f5f9' height='20' viewBox='0 0 20 20' width='20' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M5 7l5 5 5-5z'/%3E%3C/svg%3E");
+    background-repeat: no-repeat;
+    background-position: right 10px center;
+    background-size: 14px;
+}
+
+/* Hover */
+body.dark-mode select:hover {
+    border-color: var(--primary);
+}
+
+/* Focus */
+body.dark-mode select:focus {
+    border-color: var(--primary);
+    box-shadow: 0 0 0 3px rgba(59,130,246,.25);
+}
+
+/* DataTables select */
+body.dark-mode .dataTables_length select {
+    background-color: var(--bg-card) !important;
+    color: var(--text-main) !important;
+    border: 1px solid var(--border-color) !important;
+}
+
+body.dark-mode select option {
+    background: #1e293b;
+    color: #f1f5f9;
+}
+
+body.dark-mode .dataTables_filter input:focus {
+    border-color: var(--primary);
+    box-shadow: 0 0 0 2px rgba(59,130,246,.3);
+}
+
+.chart-container {
+    position: relative;
+    height: 300px;
+}

@@ -1,0 +1,156 @@
+{% extends "base.html" %}
+{% block content %}
+
+{% set puede_crear = current_user.has_permission('productos.crear') %}
+{% set puede_editar = current_user.has_permission('productos.editar') %}
+{% set puede_eliminar = current_user.has_permission('productos.eliminar') %}
+
+<h3><i class="bi bi-box-seam"></i> Productos</h3>
+
+{% if puede_crear %}
+<button class="btn btn-primary mb-3" data-bs-toggle="modal" data-bs-target="#modalNuevo">
+    Nuevo Producto
+</button>
+{% endif %}
+
+<table class="table table-hover mb-0 datatable">
+    <thead>
+        <tr>
+            <th>Img</th>
+            <th>Nombre</th>
+            <th>Código</th>
+            <th>Categoria</th>
+            <th>Precio</th>
+            <th>Stock</th>
+            <th></th>
+        </tr>
+    </thead>
+    <tbody>
+
+        {% for p in lista %}
+        <tr>
+            <td>
+                {% if p.imagen %}
+                <img src="{{ url_for('static', filename='uploads/' + p.imagen) }}" width="50">
+                {% endif %}
+            </td>
+            <td>{{ p.nombre }}</td>
+            <td>{{ p.codigo_barras }}</td>
+            <td>
+                {% if p.categoria %}
+                {{ p.categoria.parent.nombre }} → {{ p.categoria.nombre }}
+                {% endif %}
+            </td>
+            <td>{{ p.precio_venta }}</td>
+            <td>{{ p.stock }}</td>
+
+            <td>
+                {% if puede_editar %}
+                <button class="btn btn-warning btn-sm" data-bs-toggle="modal" data-bs-target="#edit{{p.id}}">
+                    ✏️
+                </button>
+                {% endif %}
+
+                {% if puede_eliminar %}
+                <form method="POST" action="{{ url_for('productos_eliminar', id=p.id) }}" style="display:inline;">
+                    <button type="button" class="btn btn-danger btn-sm"
+                        onclick="confirmarEliminacion(this.closest('form'))">
+                        <i class="bi bi-trash"></i>
+                    </button>
+                </form>
+                {% endif %}
+            </td>
+        </tr>
+
+        <!-- MODAL EDIT -->
+        <div class="modal fade" id="edit{{p.id}}">
+            <div class="modal-dialog">
+                <form method="POST" enctype="multipart/form-data" action="{{ url_for('productos_editar', id=p.id) }}">
+
+                    <div class="modal-content p-3">
+                        <div class="modal-header">
+                            <h5 class="modal-title">Editar Producto</h5>
+                            <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                        </div>
+                        <input name="nombre" value="{{p.nombre}}" class="form-control mb-2">
+                        <input name="codigo_barras" value="{{p.codigo_barras}}" class="form-control mb-2">
+                        <input name="categoria_id" value="{{p.categoria_id}}" class="form-control mb-2">
+                        <input name="precio_compra" value="{{p.precio_compra}}" class="form-control mb-2">
+                        <input name="precio_venta" value="{{p.precio_venta}}" class="form-control mb-2">
+                        <input name="stock" value="{{p.stock}}" class="form-control mb-2">
+
+                        <input type="file" name="imagen" class="form-control mb-2">
+
+                        <button class="btn btn-primary">Guardar</button>
+
+                    </div>
+                </form>
+            </div>
+        </div>
+
+        {% endfor %}
+        <audio id="beep" src="https://www.soundjay.com/buttons/beep-07.wav" preload="auto"></audio>
+    </tbody>
+</table>
+
+<!-- NUEVO -->
+<div class="modal fade" id="modalNuevo">
+    <div class="modal-dialog">
+        <form method="POST" enctype="multipart/form-data" action="{{ url_for('productos_nuevo') }}">
+
+            <div class="modal-content p-3">
+                <div class="modal-header">
+                    <h5 class="modal-title">Nuevo Producto</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <input name="nombre" placeholder="Nombre" class="form-control mb-2">
+
+                <div class="mb-2 d-flex gap-2">
+
+                    <button type="button" class="btn btn-dark" onclick="iniciarScanner()">
+                        <i class="bi bi-upc-scan"></i> Escanear
+                    </button>
+
+                    <button type="button" class="btn btn-secondary" onclick="cambiarCamara()">
+                        <i class="bi bi-arrow-clockwise"></i>
+                    </button>
+
+                </div>
+
+                <div id="reader"></div>
+                <div id="scannerEstado" class="text-muted small mt-2">
+
+                </div>
+
+                <input name="codigo_barras" id="codigo_barras" placeholder="Escanea o escribe código"
+                    class="form-control mb-2">
+
+                <select name="categoria_id" class="form-control mb-2">
+                    <option value="">Seleccione categoría</option>
+
+                    {% for c in categorias %}
+                    {% if c.parent_id %}
+                    <option value="{{c.id}}">
+                        {{c.parent.nombre}} → {{c.nombre}}
+                    </option>
+                    {% endif %}
+                    {% endfor %}
+                </select>
+                <input name="precio_compra" placeholder="Compra" class="form-control mb-2">
+                <input name="precio_venta" placeholder="Venta" class="form-control mb-2">
+                <input name="stock" placeholder="Stock" class="form-control mb-2">
+
+                <input type="file" name="imagen" class="form-control mb-2">
+
+                <button class="btn btn-success">Guardar</button>
+
+            </div>
+        </form>
+    </div>
+</div>
+
+<script src="https://unpkg.com/html5-qrcode"></script>
+<script src="{{ url_for('static', filename='js/productos.js') }}"></script>
+
+
+{% endblock %}

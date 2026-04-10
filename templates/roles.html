@@ -1,0 +1,300 @@
+{% extends "base.html" %}
+{% block title %}Roles{% endblock %}
+
+{% block content %}
+
+{% set puede_crear = current_user.has_permission('roles.crear') %}
+{% set puede_editar = current_user.has_permission('roles.editar') %}
+{% set puede_eliminar = current_user.has_permission('roles.eliminar') %}
+
+<!-- HEADER -->
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <h3 class="fw-bold mb-0">
+        <i class="bi bi-shield-lock"></i> Roles
+    </h3>
+
+    {% if puede_crear %}
+    <button class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#modalNuevoRol">
+        <i class="bi bi-plus-circle"></i> Nuevo Rol
+    </button>
+    {% endif %}
+</div>
+
+<!-- TABLA -->
+<div class="card">
+    <div class="card-body p-0">
+
+        <div class="table-responsive">
+            <table class="table table-hover mb-0 datatable">
+                <thead>
+                    <tr>
+                        <th>ID</th>
+                        <th>Nombre</th>
+                        <th>Permisos</th>
+                        <th class="text-center">Acciones</th>
+                    </tr>
+                </thead>
+
+                <tbody>
+                    {% for r in lista %}
+                    <tr>
+                        <td>{{ r.id }}</td>
+                        <td class="fw-semibold">{{ r.name }}</td>
+
+                        <td>
+                            {% for p in r.permissions %}
+                            <span class="badge bg-primary-subtle text-primary">
+                                {{ p.module.name }}.{{ p.action }}
+                            </span>
+                            {% endfor %}
+                        </td>
+
+                        <td class="text-center">
+
+                            {% if puede_editar %}
+                            <button class="btn btn-sm btn-warning" onclick='abrirModalEditar(
+                                    {{ r.id }},
+                                    {{ r.name | tojson }},
+                                    {{ r.permissions | map(attribute="id") | list | tojson }}
+                                )'>
+                                <i class="bi bi-pencil"></i>
+                            </button>
+                            {% endif %}
+
+                            {% if puede_eliminar %}
+                            <form method="POST" action="{{ url_for('roles_eliminar', id=r.id) }}"
+                                style="display:inline;">
+                                <button type="button" class="btn btn-sm btn-danger"
+                                    onclick="confirmarEliminacion(this.closest('form'))">
+                                    <i class="bi bi-trash"></i>
+                                </button>
+                            </form>
+                            {% endif %}
+
+                        </td>
+                    </tr>
+
+                    {% else %}
+                    <tr>
+                        <td colspan="4" class="text-center text-muted py-4">
+                            No hay roles
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+
+            </table>
+        </div>
+
+    </div>
+</div>
+
+<!-- ================= NUEVO ROL ================= -->
+{% if puede_crear %}
+<div class="modal fade" id="modalNuevoRol" tabindex="-1">
+    <div class="modal-dialog modal-lg modal-dialog-centered">
+        <div class="modal-content">
+
+            <form method="POST" action="{{ url_for('roles_nuevo') }}">
+
+                <div class="modal-header">
+                    <h5 class="modal-title">Nuevo Rol</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+
+                <div class="modal-body">
+
+                    <!-- Nombre -->
+                    <div class="mb-3">
+                        <label class="fw-semibold">Nombre del Rol</label>
+                        <input name="name" class="form-control" placeholder="Ej: Administrador" required>
+                    </div>
+
+                    <!-- Buscador -->
+                    <div class="mb-3">
+                        <input type="text" id="buscadorPermisos" class="form-control"
+                            placeholder="🔍 Buscar permisos...">
+                    </div>
+
+                    <!-- Acciones rápidas -->
+                    <div class="mb-3 d-flex gap-2">
+                        <button type="button" class="btn btn-sm btn-outline-primary"
+                            onclick="seleccionarTodos()">Seleccionar todo</button>
+                        <button type="button" class="btn btn-sm btn-outline-secondary"
+                            onclick="limpiarTodos()">Limpiar</button>
+                    </div>
+
+                    <!-- Permisos agrupados -->
+                    <div class="row" id="contenedorPermisos">
+
+                        {% for modulo, perms in permisos_agrupados.items() %}
+                        <div class="col-md-6 permiso-item">
+                            <div class="border rounded p-2 mb-2">
+
+                                <div class="fw-bold text-primary mb-2">
+                                    <i class="bi bi-folder"></i> {{ modulo }}
+                                </div>
+
+                                {% for p in perms %}
+                                <div class="form-check">
+                                    <input class="form-check-input permiso-checkbox" type="checkbox" name="permisos"
+                                        value="{{ p.id }}" id="nuevo_perm_{{ p.id }}">
+                                    <label class="form-check-label small">
+                                        {{ p.action }}
+                                    </label>
+                                </div>
+                                {% endfor %}
+
+                            </div>
+                        </div>
+                        {% endfor %}
+
+                    </div>
+
+                </div>
+
+                <div class="modal-footer">
+                    <button class="btn btn-primary">Guardar</button>
+                </div>
+
+            </form>
+
+        </div>
+    </div>
+</div>
+{% endif %}
+
+<!-- ================= EDITAR ROL (ÚNICO) ================= -->
+<div class="modal fade" id="modalEditarRol" tabindex="-1">
+    <div class="modal-dialog modal-lg modal-dialog-centered">
+        <div class="modal-content">
+            <div class="alert alert-info py-2">
+                Estás editando un rol. Los cambios afectarán a todos los usuarios con este rol.
+            </div>
+            <form method="POST" id="formEditarRol">
+
+                <div class="modal-header">
+                    <h5 class="modal-title">Editar Rol</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+
+                <div class="modal-body">
+
+                    <div class="mb-3">
+                        <label>Nombre</label>
+                        <input id="editName" name="name" class="form-control">
+                    </div>
+
+                    <label>Permisos</label>
+
+                    <div class="row">
+
+                        {% for modulo, perms in permisos_agrupados.items() %}
+                        <div class="col-md-6 mb-2">
+                            <div class="border rounded p-2">
+
+                                <div class="fw-bold text-primary mb-2">
+                                    <i class="bi bi-folder"></i> {{ modulo }}
+                                </div>
+
+                                {% for p in perms %}
+                                <div class="form-check">
+                                    <input class="form-check-input permiso-checkbox" type="checkbox" name="permisos"
+                                        value="{{ p.id }}" id="edit_perm_{{ p.id }}">
+                                    <label class="form-check-label small">
+                                        {{ p.action }}
+                                    </label>
+                                </div>
+                                {% endfor %}
+
+                            </div>
+                        </div>
+                        {% endfor %}
+
+                    </div>
+
+                </div>
+
+                <div class="modal-footer">
+                    <button class="btn btn-primary">
+                        <span class="spinner-border spinner-border-sm d-none" id="spinnerGuardar"></span>
+                        Guardar
+                    </button>
+                </div>
+
+            </form>
+
+        </div>
+    </div>
+</div>
+
+<!-- ================= JS ================= -->
+<script>
+
+    document.querySelectorAll("form").forEach(f => {
+        f.addEventListener("submit", () => {
+            const spinner = f.querySelector(".spinner-border");
+            if (spinner) spinner.classList.remove("d-none");
+        });
+    });
+
+    document.getElementById('modalNuevoRol').addEventListener('show.bs.modal', function () {
+        this.querySelector("form").reset();
+
+        this.querySelectorAll(".permiso-checkbox").forEach(cb => {
+            cb.checked = false;
+        });
+    });
+
+    function abrirModalEditar(id, name, permisos) {
+
+        // Action dinámica
+        document.getElementById("formEditarRol").action = "/roles/editar/" + id;
+
+        // Nombre
+        document.getElementById("editName").value = name;
+
+        // Limpiar solo modal editar
+        document.querySelectorAll("#modalEditarRol .permiso-checkbox").forEach(cb => {
+            cb.checked = false;
+        });
+
+        // Marcar permisos correctos
+        permisos.forEach(p => {
+            const checkbox = document.getElementById("edit_perm_" + p);
+            if (checkbox) checkbox.checked = true;
+        });
+
+        // Mostrar modal
+        const modal = new bootstrap.Modal(document.getElementById('modalEditarRol'));
+        modal.show();
+    }
+
+    // Buscar permisos
+    document.getElementById("buscadorPermisos").addEventListener("keyup", function () {
+        let filtro = this.value.toLowerCase();
+
+        document.querySelectorAll(".permiso-item").forEach(item => {
+            item.style.display = item.innerText.toLowerCase().includes(filtro)
+                ? ""
+                : "none";
+        });
+    });
+
+    // Seleccionar todos
+    function seleccionarTodos() {
+        document.querySelectorAll("#modalNuevoRol .permiso-checkbox").forEach(cb => {
+            cb.checked = true;
+        });
+    }
+
+    function limpiarTodos() {
+        document.querySelectorAll("#modalNuevoRol .permiso-checkbox").forEach(cb => {
+            cb.checked = false;
+        });
+    }
+
+
+</script>
+
+{% endblock %}

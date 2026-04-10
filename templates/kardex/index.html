@@ -1,0 +1,191 @@
+{% extends "base.html" %}
+{% block title %}Kardex{% endblock %}
+
+{% block content %}
+
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <h3 class="fw-bold mb-0">
+        <i class="bi bi-box-seam"></i> Kardex Inventario
+    </h3>
+
+    <div class="d-flex gap-2">
+        <a href="{{ url_for('kardex_movimientos') }}" class="btn btn-outline-primary">
+            <i class="bi bi-clock-history"></i> Movimientos
+        </a>
+
+        <button class="btn btn-danger" data-bs-toggle="modal" data-bs-target="#modalReset">
+            <i class="bi bi-arrow-counterclockwise"></i> Reset Stock
+        </button>
+    </div>
+</div>
+
+<!-- RESUMEN -->
+<div class="row mb-4">
+    <div class="col-md-6">
+        <div class="card p-4">
+            <h6 class="text-muted">Productos Activos</h6>
+            <h2>{{ total_productos }}</h2>
+        </div>
+    </div>
+
+    <div class="col-md-6">
+        <div class="card p-4">
+            <h6 class="text-muted">Stock Total</h6>
+            <h2>{{ total_stock }}</h2>
+        </div>
+    </div>
+</div>
+
+<!-- ACCIONES -->
+<div class="row mb-4">
+
+    <div class="col-md-4">
+        <div class="card p-3 h-100">
+            <h5>Ajuste Individual</h5>
+            <form method="POST" action="{{ url_for('kardex_ajuste_individual') }}">
+                
+                <select name="producto_id" class="form-select mb-2" required>
+                    <option value="">Producto</option>
+                    {% for p in productos %}
+                    <option value="{{ p.id }}">{{ p.nombre }}</option>
+                    {% endfor %}
+                </select>
+
+                <select name="almacen_id" class="form-select mb-2" required>
+                    <option value="">Almacén</option>
+                    {% for a in almacenes %}
+                    <option value="{{ a.id }}">{{ a.nombre }}</option>
+                    {% endfor %}
+                </select>
+
+                <input type="number" step="0.01" name="nuevo_stock" class="form-control mb-2" placeholder="Nuevo stock" required>
+
+                <textarea name="observacion" class="form-control mb-3" placeholder="Observación"></textarea>
+
+                <button class="btn btn-primary w-100">Guardar Ajuste</button>
+            </form>
+        </div>
+    </div>
+
+    <!-- TRANSFERENCIA -->
+    <div class="col-md-4">
+        <div class="card p-3 h-100">
+            <h5>Transferencia</h5>
+
+            <form method="POST" action="{{ url_for('kardex_transferencia') }}">
+
+                <select name="producto_id" class="form-select mb-2" required>
+                    <option value="">Producto</option>
+                    {% for p in productos %}
+                    <option value="{{ p.id }}">{{ p.nombre }}</option>
+                    {% endfor %}
+                </select>
+
+                <select name="origen_id" class="form-select mb-2" required>
+                    <option value="">Origen</option>
+                    {% for a in almacenes %}
+                    <option value="{{ a.id }}">{{ a.nombre }}</option>
+                    {% endfor %}
+                </select>
+
+                <select name="destino_id" class="form-select mb-2" required>
+                    <option value="">Destino</option>
+                    {% for a in almacenes %}
+                    <option value="{{ a.id }}">{{ a.nombre }}</option>
+                    {% endfor %}
+                </select>
+
+                <input type="number" step="0.01" name="cantidad" class="form-control mb-2" placeholder="Cantidad" required>
+
+                <textarea name="observacion" class="form-control mb-3" placeholder="Observación"></textarea>
+
+                <button class="btn btn-warning w-100">Transferir</button>
+            </form>
+        </div>
+    </div>
+
+    <!-- BUSCADOR BARRAS -->
+    <div class="col-md-4">
+        <div class="card p-3 h-100">
+            <h5>Escáner Código Barras</h5>
+
+            <input type="text" id="codigoBarras" class="form-control mb-3" placeholder="Escanear código...">
+
+            <div id="resultadoProducto" class="border rounded p-3 text-muted">
+                Esperando escaneo...
+            </div>
+        </div>
+    </div>
+
+</div>
+
+<!-- MOVIMIENTOS -->
+<div class="card">
+    <div class="card-body">
+        <h5 class="mb-3">Últimos Movimientos</h5>
+
+        <div class="table-responsive">
+            <table class="table table-hover datatable">
+                <thead>
+                    <tr>
+                        <th>Fecha</th>
+                        <th>Producto</th>
+                        <th>Almacén</th>
+                        <th>Tipo</th>
+                        <th>Cantidad</th>
+                        <th>Anterior</th>
+                        <th>Nuevo</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for m in movimientos %}
+                    <tr>
+                        <td>{{ m.fecha.strftime('%d/%m/%Y %H:%M') }}</td>
+                        <td>{{ m.producto.nombre }}</td>
+                        <td>{{ m.almacen.nombre }}</td>
+                        <td>{{ m.tipo_movimiento }}</td>
+                        <td>{{ m.cantidad }}</td>
+                        <td>{{ m.stock_anterior }}</td>
+                        <td>{{ m.stock_nuevo }}</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+
+    </div>
+</div>
+
+<!-- MODAL RESET -->
+<div class="modal fade" id="modalReset" tabindex="-1">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content">
+
+            <form method="POST" action="{{ url_for('kardex_reset_masivo') }}">
+
+                <div class="modal-header">
+                    <h5 class="modal-title text-danger">
+                        Resetear Stock
+                    </h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+
+                <div class="modal-body">
+                    ¿Seguro que deseas resetear TODO el stock a cero?
+                </div>
+
+                <div class="modal-footer">
+                    <button class="btn btn-danger w-100">
+                        Confirmar Reset
+                    </button>
+                </div>
+
+            </form>
+
+        </div>
+    </div>
+</div>
+
+<script src="{{ url_for('static', filename='js/kardex.js') }}"></script>
+
+{% endblock %}

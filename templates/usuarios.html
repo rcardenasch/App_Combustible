@@ -1,0 +1,214 @@
+{% extends "base.html" %}
+{% block title %}Usuarios{% endblock %}
+
+{% block content %}
+
+{% set puede_crear = current_user.is_authenticated and current_user.has_permission('usuarios.crear') %}
+{% set puede_editar = current_user.is_authenticated and current_user.has_permission('usuarios.editar') %}
+{% set puede_eliminar = current_user.is_authenticated and current_user.has_permission('usuarios.eliminar') %}
+
+
+<!-- HEADER -->
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <h3 class="fw-bold mb-0">
+        <i class="bi bi-people"></i> Usuarios
+    </h3>
+
+    {% if puede_crear %}
+    <button class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#modalNuevoUsuario">
+        <i class="bi bi-plus-circle"></i> Nuevo Usuario
+    </button>
+    {% endif %}
+</div>
+
+<!-- TABLA -->
+<div class="card">
+    <div class="card-body p-0">
+
+        <div class="table-responsive">
+            <table class="table table-hover mb-0 datatable">
+                <thead>
+                    <tr>
+                        <th>ID</th>
+                        <th>Usuario</th>
+                        <th>Nombre</th>
+                        <th>Email</th>
+                        <th>Roles</th>
+                        <th class="text-center">Acciones</th>
+                    </tr>
+                </thead>
+
+                <tbody>
+                    {% for u in lista %}
+                    <tr>
+                        <td>{{ u.id }}</td>
+                        <td class="fw-semibold">{{ u.username }}</td>
+                        <td>{{ u.full_name }}</td>
+                        <td>{{ u.email }}</td>
+
+                        <td>
+                            {% for r in u.roles %}
+                            <span class="badge bg-primary-subtle text-primary">
+                                {{ r.name }}
+                            </span>
+                            {% endfor %}
+                        </td>
+
+                        <td class="text-center">
+
+                            {% if puede_editar %}
+                            <button class="btn btn-sm btn-warning" data-bs-toggle="modal"
+                                data-bs-target="#modalEditar{{ u.id }}">
+                                <i class="bi bi-pencil"></i>
+                            </button>
+                            {% endif %}
+
+                            {% if puede_eliminar %}
+                            <form method="POST" action="{{ url_for('usuarios_eliminar', id=u.id) }}"
+                                style="display:inline;">
+                                <button type="button" class="btn btn-sm btn-danger"
+                                    onclick="confirmarEliminacion(this.closest('form'))">
+                                    <i class="bi bi-trash"></i>
+                                </button>
+                            </form>
+                            {% endif %}
+
+                        </td>
+                    </tr>
+
+                    {% else %}
+                    <tr>
+                        <td colspan="6" class="text-center text-muted py-4">
+                            No hay usuarios
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+
+            </table>
+        </div>
+
+    </div>
+</div>
+<audio id="beep" src="/static/beep.mp3" style="display: none"></audio>
+<!-- ================= MODALES EDITAR ================= -->
+{% for u in lista %}
+<div class="modal fade" id="modalEditar{{ u.id }}" tabindex="-1">
+    <div class="modal-dialog modal-lg modal-dialog-centered">
+        <div class="modal-content">
+
+            <form method="POST" action="{{ url_for('usuarios_editar', id=u.id) }}">
+
+                <div class="modal-header">
+                    <h5 class="modal-title">Editar Usuario</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+
+                <div class="modal-body">
+
+                    <div class="mb-3">
+                        <label>Usuario</label>
+                        <input type="text" name="username" class="form-control" value="{{ u.username }}">
+                    </div>
+
+                    <div class="mb-3">
+                        <label>Email</label>
+                        <input type="email" name="email" class="form-control" value="{{ u.email }}">
+                    </div>
+
+                    <div class="mb-3">
+                        <label>Nombre</label>
+                        <input type="text" name="full_name" class="form-control" value="{{ u.full_name }}">
+                    </div>
+
+                    <div class="mb-3">
+                        <label>Roles</label>
+
+                        {% for rol in roles %}
+                        <div class="form-check">
+                            <input class="form-check-input" type="checkbox" name="roles" value="{{ rol.id }}" {% if rol
+                                in u.roles %}checked{% endif %}>
+                            <label class="form-check-label">
+                                {{ rol.name }}
+                            </label>
+                        </div>
+                        {% endfor %}
+                    </div>
+
+                </div>
+
+                <div class="modal-footer">
+                    <button class="btn btn-primary">Guardar</button>
+                </div>
+
+            </form>
+
+        </div>
+    </div>
+</div>
+{% endfor %}
+
+<!-- ================= NUEVO USUARIO ================= -->
+{% if puede_crear %}
+<div class="modal fade" id="modalNuevoUsuario" tabindex="-1">
+    <div class="modal-dialog modal-lg modal-dialog-centered">
+        <div class="modal-content">
+
+            <form method="POST" action="{{ url_for('usuarios_nuevo') }}">
+
+                <div class="modal-header">
+                    <h5 class="modal-title">Nuevo Usuario</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+
+                <div class="modal-body">
+
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <label>Usuario</label>
+                            <input type="text" name="username" class="form-control" required>
+                        </div>
+
+                        <div class="col-md-6 mb-3">
+                            <label>Contraseña</label>
+                            <input type="password" name="password" class="form-control" required>
+                        </div>
+                    </div>
+
+                    <div class="mb-3">
+                        <label>Email</label>
+                        <input type="email" name="email" class="form-control">
+                    </div>
+
+                    <div class="mb-3">
+                        <label>Nombre</label>
+                        <input type="text" name="full_name" class="form-control">
+                    </div>
+
+                    <div class="mb-3">
+                        <label>Roles</label>
+
+                        {% for rol in roles %}
+                        <div class="form-check">
+                            <input class="form-check-input" type="checkbox" name="roles" value="{{ rol.id }}">
+                            <label class="form-check-label">
+                                {{ rol.name }}
+                            </label>
+                        </div>
+                        {% endfor %}
+                    </div>
+
+                </div>
+
+                <div class="modal-footer">
+                    <button class="btn btn-primary">Guardar</button>
+                </div>
+
+            </form>
+
+        </div>
+    </div>
+</div>
+{% endif %}
+
+{% endblock %}

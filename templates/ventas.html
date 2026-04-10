@@ -1,0 +1,298 @@
+{% extends "base.html" %}
+{% block content %}
+
+<!-- HEADER -->
+<div class="d-flex justify-content-between align-items-center mb-3">
+    <h3 class="mb-0">
+        <i class="bi bi-cart text-primary"></i> Punto de Venta
+    </h3>
+
+    <span class="badge bg-success fs-6">
+        🟢 Caja abierta
+    </span>
+</div>
+
+<div class="card shadow-sm mb-3">
+    <div class="card-body d-flex align-items-center gap-3 flex-wrap">
+
+        <!-- BOTÓN ESCANEAR -->
+        <button class="btn btn-success d-flex align-items-center gap-2" onclick="iniciarScanner()">
+            <i class="bi bi-upc-scan"></i>
+            Escanear
+        </button>
+        <button class="btn btn-secondary" onclick="cambiarCamara()">
+            <i class="bi bi-arrow-clockwise"></i>Cambiar cámara
+        </button>
+        <div id="scannerEstado" class="text-muted small mt-2"></div>
+
+        <!-- BUSCADOR GRANDE -->
+        <div class="flex-grow-1 position-relative">
+            <input type="text" id="buscar" class="form-control form-control-lg"
+                placeholder="🔍 Escanea o escribe nombre / código">
+
+            <!-- hint -->
+            <small class="text-muted position-absolute" style="bottom:-18px; left:10px;">
+                Enter para agregar rápido
+            </small>
+        </div>
+        <!-- ACCIÓN RÁPIDA -->
+        <div class="col-md-3 d-flex align-items-end">
+            <button type="button" class="btn btn-outline-primary w-100" data-bs-toggle="modal"
+                data-bs-target="#modalProducto">
+                <i class="bi bi-search"></i> Ir a productos
+            </button>
+        </div>
+
+    </div>
+
+    <!-- SCANNER -->
+    <div class="p-2">
+        <div id="reader" style="max-width:400px;"></div>
+    </div>
+    <div id="scannerEstado" class="text-muted small mt-2">
+        
+    </div>
+</div>
+
+<!-- TABLA -->
+
+<form method="POST" action="{{ url_for('ventas_nuevo') }}">
+
+
+    <!-- CLIENTE + COMPROBANTE -->
+
+
+    <div class="row g-2 mb-3 align-items-end">
+
+        <!-- CLIENTE -->
+        <div class="col-6 col-md-2">
+
+            <label class="form-label fw-bold mb-1">
+                <i class="bi bi-person"></i> Cliente
+            </label>
+
+            <div class="small text-success mb-1" id="clienteSeleccionado">
+                Cliente no seleccionado
+            </div>
+
+            <input type="hidden" name="cliente_id" id="cliente_id">
+
+            <button type="button" class="btn btn-outline-primary btn-sm w-100 w-md-auto" data-bs-toggle="modal"
+                data-bs-target="#modalCliente">
+
+                <i class="bi bi-search"></i>
+                <span class="d-none d-md-inline">Buscar Cliente</span>
+                <span class="d-md-none">Cliente</span>
+            </button>
+
+        </div>
+
+        <!-- COMPROBANTE -->
+        <div class="col-6 col-md-2">
+
+            <label class="form-label fw-bold mb-1">
+                <i class="bi bi-file-earmark-text"></i> Comprobante
+            </label>
+
+            <select name="tipo_comprobante" class="form-select form-select-sm text-muted"
+                onchange="this.classList.remove('text-muted')">
+
+                <option value="" selected disabled hidden>
+                    Seleccionar
+                </option>
+
+                <option value="boleta">🧾 Boleta</option>
+                <option value="factura">🏢 Factura</option>
+
+            </select>
+
+        </div>
+        <!-- ALMACEN -->
+        <div>
+            <select name="almacen_id" class="form-select" required>
+                {% for a in almacenes %}
+                <option value="{{ a.id }}">{{ a.nombre }}</option>
+                {% endfor %}
+            </select>
+        </div>
+
+    </div>
+
+
+    <table class="table table-hover mb-0">
+        <thead>
+            <tr>
+                <th>Cod.</th>
+                <th>Producto</th>
+                <th>Precio</th>
+                <th>Cantidad</th>
+                <th>Subtotal</th>
+                <th></th>
+            </tr>
+        </thead>
+        <tbody id="lista"></tbody>
+    </table>
+
+    <h4 class="mt-3">Total: <span id="total">0</span></h4>
+
+    <!-- 💰 PAGO -->
+    <div class="card mt-3 shadow-sm border-0">
+        <div class="card-body">
+
+            <div class="row g-3 align-items-center">
+
+                <!-- TOTAL GRANDE -->
+                <div class="col-md-4 text-center">
+                    <div class="p-3 bg-light rounded">
+                        <small class="text-muted">Total</small>
+                        <h2 class="mb-0 text-primary fw-bold">S/ <span id="totalPago">0.00</span></h2>
+                    </div>
+                </div>
+
+                <!-- MONTO PAGADO -->
+                <div class="col-md-4">
+                    <label class="form-label fw-bold">💵 Monto pagado</label>
+
+                    <input type="number" step="0.01" id="montoPagado" class="form-control form-control-lg text-center"
+                        placeholder="0.00">
+
+                    <!-- 🔥 BOTONES RÁPIDOS -->
+                    <div class="d-flex gap-2 mt-2 flex-wrap justify-content-center">
+                        <button type="button" class="btn btn-outline-success btn-sm" onclick="agregarPago(20)">S/
+                            20</button>
+                        <button type="button" class="btn btn-outline-success btn-sm" onclick="agregarPago(50)">S/
+                            50</button>
+                        <button type="button" class="btn btn-outline-success btn-sm" onclick="agregarPago(100)">S/
+                            100</button>
+                        <button type="button" class="btn btn-outline-success btn-sm" onclick="agregarPago(200)">S/
+                            200</button>
+
+                        <!-- 🔄 limpiar -->
+                        <button type="button" class="btn btn-outline-danger btn-sm" onclick="limpiarPago()">
+                            <i class="bi bi-x-circle"></i>
+                        </button>
+                    </div>
+                </div>
+
+                <!-- VUELTO -->
+                <div class="col-md-4 text-center">
+                    <div class="p-3 bg-success text-white rounded">
+                        <small>Vuelto</small>
+                        <h2 class="mb-0 fw-bold">S/ <span id="vuelto">0.00</span></h2>
+                    </div>
+                </div>
+
+            </div>
+
+            <!-- ALERTA -->
+            <div id="alertaPago" class="mt-2 text-danger fw-bold text-center" style="display:none;">
+                ⚠️ Monto insuficiente
+            </div>
+
+        </div>
+    </div>
+
+    <button class="btn btn-primary mt-2"><i class="bi bi-pencil-square"></i> Registrar venta</button>
+
+</form>
+
+<div class="card mt-3 shadow-sm">
+    <div class="card-body">
+
+        <div class="d-flex justify-content-between align-items-center mb-2">
+            <h6 class="fw-bold mb-0">🧾 Ventas recientes</h6>
+
+            <button class="btn btn-sm btn-outline-secondary" onclick="cargarVentasRecientes()">
+                <i class="bi bi-arrow-clockwise"></i>
+            </button>
+        </div>
+
+        <div class="table-responsive">
+            <table class="table table-sm table-hover align-middle">
+                <thead class="table-light">
+                    <tr>
+                        <th>Nro</th>
+                        <th>Fecha</th>
+                        <th>Cliente</th>
+                        <th>Total</th>
+                        <th>Pago</th>
+                        <th>Acción</th>
+                    </tr>
+                </thead>
+                <tbody id="ventasRecientes">
+                    <tr>
+                        <td colspan="6" class="text-center text-muted">
+                            Cargando...
+                        </td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+
+    </div>
+</div>
+
+<!-- modal Cliente buscar -->
+<div class="modal fade" id="modalCliente">
+    <div class="modal-dialog">
+        <div class="modal-content p-3">
+            <div class="modal-header">
+                <h5>Buscar Cliente</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+
+
+            <input type="text" id="buscarClienteModal" class="form-control mb-2" placeholder="Nombre o documento">
+
+            <div id="resultadosClientes"></div>
+
+            <hr>
+
+            <button class="btn btn-success mb-2" onclick="mostrarFormularioCliente()">
+                <i class="bi bi-person-plus"></i> Nuevo cliente
+            </button>
+
+            <!-- FORM NUEVO CLIENTE -->
+            <div id="formNuevoCliente" style="display:none;">
+
+                <input id="nuevoNombre" class="form-control mb-2" placeholder="Nombre">
+
+                <input id="nuevoDocumento" class="form-control mb-2" placeholder="DNI / RUC">
+
+                <input id="nuevoDireccion" class="form-control mb-2" placeholder="Dirección">
+
+                <button class="btn btn-primary" onclick="guardarClienteRapido()">
+                    Guardar cliente
+                </button>
+            </div>
+
+        </div>
+    </div>
+</div>
+
+<!-- modal Producto buscar -->
+<div class="modal fade" id="modalProducto">
+    <div class="modal-dialog">
+        <div class="modal-content p-3">
+            <div class="modal-header">
+                <h5>Buscar y seleccionar Producto</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+
+
+            <input type="text" id="buscarProductoModal" class="form-control mb-2"
+                placeholder="Nombre o Codigo Producto">
+
+            <div id="resultadosProductos"></div>
+            <hr>
+
+        </div>
+    </div>
+</div>
+
+<script src="https://unpkg.com/html5-qrcode"></script>
+<script src="{{ url_for('static', filename='js/ventas.js') }}"></script>
+
+
+
+{% endblock %}

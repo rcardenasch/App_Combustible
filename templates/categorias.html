@@ -1,0 +1,102 @@
+{% extends "base.html" %}
+{% block content %}
+
+{% set puede_crear = current_user.has_permission('categorias.crear') %}
+{% set puede_editar = current_user.has_permission('categorias.editar') %}
+{% set puede_eliminar = current_user.has_permission('categorias.eliminar') %}
+<h3><i class="bi bi-tags"></i> Categorías</h3>
+
+<button class="btn btn-primary mb-3" data-bs-toggle="modal" data-bs-target="#nuevo">
+    Nueva Categoría
+</button>
+
+<!-- 👇 AQUÍ VA -->
+<div class="mb-3">
+    {% if puede_editar %}
+    <button id="btnEditar" class="btn btn-warning btn-sm" disabled>✏️ Editar</button>
+    {% endif %}
+    {% if puede_eliminar %}
+
+    <button id="btnEliminar" class="btn btn-danger btn-sm" disabled>🗑 Eliminar</button>
+    {% endif %}
+</div>
+
+<ul class="list-group" id="listaCategorias">
+
+    {% for c in categorias %}
+    <li class="list-group-item categoria-item" data-id="{{c.id}}">
+        <b>{{ c.nombre }}</b>
+
+        {% if c.hijos %}
+        <ul class="mt-2">
+            {% for h in c.hijos %}
+            <li class="list-group-item categoria-item ms-4" data-id="{{h.id}}">
+                — {{ h.nombre }}
+            </li>
+            {% endfor %}
+        </ul>
+        {% endif %}
+
+    </li>
+    {% endfor %}
+
+</ul>
+<div class="modal fade" id="nuevo">
+    <div class="modal-dialog">
+        <form method="POST" action="{{ url_for('categorias_nuevo') }}">
+            <div class="modal-content p-3">
+                <div class="modal-header">
+                    <h5 class="modal-title">Nueva Categoría</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <input name="nombre" placeholder="Nombre" class="form-control mb-2">
+
+                <select name="parent_id" class="form-control mb-2">
+                    <option value="">Categoría padre (opcional)</option>
+                    <option value="">Sin padre</option>
+                    {% for cat in todas %}
+                    <option value="{{cat.id}}">{{cat.nombre}}</option>
+                    {% endfor %}
+                </select>
+
+                <button class="btn btn-success">Guardar</button>
+
+            </div>
+        </form>
+    </div>
+</div>
+{% for cat in todas %}
+<div class="modal fade" id="edit{{cat.id}}">
+    <div class="modal-dialog">
+
+        <form method="POST" action="{{ url_for('categorias_editar', id=cat.id) }}">
+
+            <div class="modal-content p-3">
+                <div class="modal-header">
+                    <h5 class="modal-title">Editar Categoria</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <input name="nombre" value="{{cat.nombre}}" class="form-control mb-2">
+
+                <select name="parent_id" class="form-control mb-2">
+                    <option value="">Sin padre</option>
+
+                    {% for c in todas %}
+                    <option value="{{c.id}}" {% if cat.parent_id==c.id %}selected{% endif %}>
+                        {{c.nombre}}
+                    </option>
+                    {% endfor %}
+                </select>
+
+                <button class="btn btn-primary">Guardar</button>
+
+            </div>
+
+        </form>
+    </div>
+</div>
+{% endfor %}
+
+
+<script src="{{ url_for('static', filename='js/categorias.js') }}"></script>
+{% endblock %}

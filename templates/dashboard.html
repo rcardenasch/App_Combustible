@@ -1,0 +1,101 @@
+{% extends "base.html" %}
+{% block content %}
+
+<h3 class="mb-4">📊 Dashboard</h3>
+
+<!-- TARJETAS -->
+<div class="row g-3">
+
+    <div class="col-md-3">
+        <div class="card shadow-sm text-center p-3">
+            <h6>Total Ventas</h6>
+            <h3 class="text-success">S/ {{ total_ventas }}</h3>
+        </div>
+    </div>
+
+    <div class="col-md-3">
+        <div class="card shadow-sm text-center p-3">
+            <h6>Producto estrella</h6>
+            <b>{{ producto_estrella[0] if producto_estrella else "-" }}</b>
+        </div>
+    </div>
+
+    <div class="col-md-3">
+        <div class="card shadow-sm text-center p-3">
+            <h6>Mejor cliente</h6>
+            <b>{{ mejor_cliente[0] if mejor_cliente else "-" }}</b>
+        </div>
+    </div>
+
+    <div class="col-md-3">
+        <div class="card shadow-sm text-center p-3">
+            <h6>Stock bajo</h6>
+            <span class="text-danger">{{ bajo_stock|length }}</span>
+        </div>
+    </div>
+
+</div>
+
+<!-- GRÁFICOS -->
+<div class="row mt-4">
+
+    <!-- VENTAS -->
+    <div class="col-md-6">
+        <div class="card p-3 shadow-sm">
+            <h6>Ventas por día</h6>
+            <div style="height:300px;">
+                <canvas id="ventasChart"></canvas>
+            </div>
+        </div>
+    </div>
+
+    <!-- PRODUCTOS -->
+    <div class="col-md-6">
+        <div class="card p-3 shadow-sm">
+            <h6>Top productos</h6>
+            <div style="height:300px;">
+                <canvas id="productosChart"></canvas>
+            </div>
+        </div>
+    </div>
+
+</div>
+
+<!-- STOCK BAJO -->
+<div class="card mt-4 shadow-sm">
+    <div class="card-body">
+        <h6>⚠️ Productos con bajo stock</h6>
+
+        <table class="table">
+            <thead>
+                <tr>
+                    <th>Producto</th>
+                    <th>Stock</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for p in bajo_stock %}
+                <tr>
+                    <td>{{ p.nombre }}</td>
+                    <td class="text-danger">{{ p.stock }}</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+
+<!-- CHART JS -->
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+<script>
+    const ventasLabels = {{ ventas_dia | map(attribute = 0) | list | tojson }};
+    const ventasData = {{ ventas_dia | map(attribute = 1) | list | tojson }};
+
+    const prodLabels = {{ top_productos | map(attribute = 0) | list | tojson }};
+    const prodData = {{ top_productos | map(attribute = 1) | list | tojson }};
+</script>
+
+<script src="{{ url_for('static', filename='js/dashboard.js') }}"></script>
+
+{% endblock %}
