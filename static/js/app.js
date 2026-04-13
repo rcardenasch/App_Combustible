@@ -96,7 +96,7 @@ document.addEventListener("DOMContentLoaded", () => {
     }
 
     // Ejemplo de uso de notificación (puedes personalizar el tipo y mensaje)
-    showNotification("success", "¡Operación completada exitosamente!");
+    //showNotification("success", "¡Operación completada exitosamente!");
 
 
     // Modal para eliminación con confirmación
