@@ -2,7 +2,7 @@
 # app.py
 # =========================
 
-from flask import Flask, request, redirect, url_for, render_template, flash
+from flask import Flask, request, redirect, url_for, render_template, flash, jsonify
 from flask_login import LoginManager, login_user, logout_user, login_required, current_user
 from models import (db,User, Role, Permission,Module, Producto,Categoria,Venta,Cliente,Compra,DetalleCompra,DetalleVenta,Proveedor,Almacen,
     StockAlmacen,KardexMovimiento,TransferenciaAlmacen,TransferenciaDetalle)
@@ -20,64 +20,56 @@ from sqlalchemy import cast, String,or_,func
 from datetime import datetime
 from sqlalchemy import text
 
-
-BASE_DIR = os.path.abspath(os.path.dirname(__file__))
-
-
+# ------------------------
+# APP
+# ------------------------
 app = Flask(__name__, static_folder='static')
 app.config.from_object(Config)
 
-
-
+# ------------------------
 # INIT
+# ------------------------
 db.init_app(app)
+
 login_manager = LoginManager(app)
 login_manager.login_view = 'login'
 login_manager.login_message = None
 
+
 @login_manager.unauthorized_handler
 def unauthorized():
     return redirect(url_for('login'))
-#login_manager.login_message = None
 
 
 @login_manager.user_loader
 def load_user(user_id):
     return db.session.get(User, int(user_id))
 
-# Importante Agregar todos los modulos que e creen
 
+# ------------------------
+# CONFIG PERMISOS
+# ------------------------
 MODULOS = [
-    "usuarios",
-    "roles",
-    "productos",
-    "categorias",
-    "clientes",
-    "ventas",
-    "compras",
-    "proveedores",
-    "kardex"
+    "usuarios", "roles", "productos", "categorias",
+    "clientes", "ventas", "compras", "proveedores", "kardex"
 ]
 
 ACCIONES = ["ver", "crear", "editar", "eliminar"]
 
-ACCIONES_KARDEX = [
-    "ver",
-    "editar",
-    "ajustar",
-    "resetear"
-]
+ACCIONES_KARDEX = ["ver", "editar", "ajustar", "resetear"]
 
+
+# ------------------------
+# SEED (MANUAL)
+# ------------------------
 def seed_data():
     try:
-        # -------- ROLE --------
         role_admin = Role.query.filter_by(name="admin").first()
         if not role_admin:
             role_admin = Role(name="admin")
             db.session.add(role_admin)
             db.session.commit()
 
-        # -------- ADMIN --------
         admin = User.query.filter_by(username="admin").first()
         if not admin:
             admin = User(
@@ -93,7 +85,6 @@ def seed_data():
             admin.roles.append(role_admin)
             db.session.commit()
 
-        # -------- MODULOS + PERMISOS --------
         for nombre_modulo in MODULOS:
             mod = Module.query.filter_by(name=nombre_modulo).first()
 
@@ -115,7 +106,6 @@ def seed_data():
 
         db.session.commit()
 
-        # -------- ASIGNAR PERMISOS --------
         for perm in Permission.query.all():
             if perm not in role_admin.permissions:
                 role_admin.permissions.append(perm)
@@ -128,19 +118,33 @@ def seed_data():
         print("⚠️ Error en seed:", e)
 
 
-# -------- CONTEXTO INICIALIZACION --------
+# ------------------------
+# SOLO TEST DE ARRANQUE (LIVIANO)
+# ------------------------
+#  https://tu-app.onrender.com/init para ejecutar manualmente el init (seed_data())
+@app.route("/init")
+def init():
+    try:
+        seed_data()
+        return {"msg": "seed ejecutado"}, 200
+    except Exception as e:
+        return {"error": str(e)}, 500
+
+# ------------------------
+# CONTEXTO INICIALIZACION (SEGURO)
+# ------------------------
 with app.app_context():
     try:
         print("🚀 Iniciando aplicación...")
 
-        # ✅ SOLO crear tablas (SEGURO)
+        # SOLO crear tablas
         db.create_all()
-        if os.getenv("RENDER") == "true":
-            seed_data()
-            print("✅ Tablas verificadas/creadas")
+
+        print("✅ Tablas verificadas")
 
     except Exception as e:
-        print("❌ Error al iniciar BD:", e)   
+        print("❌ Error al iniciar BD:", e)
+
 #-- Funciones globales--
 def validar_texto(valor, campo, min_len=3, max_len=150):
     if not valor:
