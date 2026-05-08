@@ -2,10 +2,9 @@
 # app.py
 # =========================
 
-from flask import Flask, request, redirect, url_for, render_template, flash, jsonify
+from flask import Flask, request, redirect, url_for, render_template, flash, jsonify,send_file
 from flask_login import LoginManager, login_user, logout_user, login_required, current_user
-from models import (db,User, Role, Permission,Module, Producto,Categoria,Venta,Cliente,Compra,DetalleCompra,DetalleVenta,Proveedor,Almacen,
-    StockAlmacen,KardexMovimiento,TransferenciaAlmacen,TransferenciaDetalle)
+from models import (db,Usuario, Role, Permission,Module,Proyecto,Vehiculo,Alerta,Operador,Kardex,Rendimiento,Tanque)
 
 from config import Config
 from functools import wraps
@@ -17,8 +16,11 @@ import re
 import json
 import uuid
 from sqlalchemy import cast, String,or_,func
-from datetime import datetime
+from datetime import datetime,timedelta
 from sqlalchemy import text
+from openpyxl import Workbook
+import io
+from openpyxl.styles import PatternFill
 
 # ------------------------
 # APP
@@ -43,15 +45,21 @@ def unauthorized():
 
 @login_manager.user_loader
 def load_user(user_id):
-    return db.session.get(User, int(user_id))
+    return db.session.get(Usuario, int(user_id))
 
 
 # ------------------------
 # CONFIG PERMISOS
 # ------------------------
 MODULOS = [
-    "usuarios", "roles", "productos", "categorias",
-    "clientes", "ventas", "compras", "proveedores", "kardex"
+    "usuarios",
+    "roles",
+    "proyectos",
+    "vehiculos",
+    "operadores",
+    "tanques",
+    "rendimientos",
+    "kardex"
 ]
 
 ACCIONES = ["ver", "crear", "editar", "eliminar"]
@@ -59,6 +67,8 @@ ACCIONES = ["ver", "crear", "editar", "eliminar"]
 ACCIONES_KARDEX = ["ver", "editar", "ajustar", "resetear"]
 
 
+def now_utc():
+    return datetime.utcnow()
 # ------------------------
 # SEED (MANUAL)
 # ------------------------
@@ -70,9 +80,9 @@ def seed_data():
             db.session.add(role_admin)
             db.session.commit()
 
-        admin = User.query.filter_by(username="admin").first()
+        admin = Usuario.query.filter_by(username="admin").first()
         if not admin:
-            admin = User(
+            admin = Usuario(
                 username="admin",
                 email="admin@test.com",
                 full_name="Administrador"
@@ -174,19 +184,9 @@ def validar_email(email):
         return "Email inválido"
     return None
 
-def obtener_stock(producto_id, almacen_id):
-    stock = StockAlmacen.query.filter_by(producto_id=producto_id, almacen_id=almacen_id).first()
-    if not stock:
-        # Crear registro si no existe
-        stock = StockAlmacen(producto_id=producto_id, almacen_id=almacen_id, stock=0)
-        db.session.add(stock)
-        db.session.commit()
-    return stock
-
 # =========================
 # PERMISOS
 # =========================
-
 def permission_required(modulo, accion):
     def decorator(f):
         @wraps(f)
@@ -212,7 +212,10 @@ def permission_required(modulo, accion):
 @app.route('/')
 @login_required
 def index():
-    return redirect(url_for("dashboard"))
+    #return redirect(url_for("dashboard"))
+    return redirect(url_for("rendimiento_list"))
+    
+    
 
 @app.route('/login', methods=['GET','POST'])
 def login():
@@ -221,10 +224,10 @@ def login():
         return redirect(url_for("index"))
 
     if request.method == 'POST':
-        user = User.query.filter_by(username=request.form['username']).first()
+        usuario = Usuario.query.filter_by(username=request.form['username']).first()
 
-        if user and user.check_password(request.form['password']):
-            login_user(user)
+        if usuario and usuario.check_password(request.form['password']):
+            login_user(usuario)
             return redirect(url_for('index'))
 
         flash('Credenciales inválidas','danger')
@@ -241,7 +244,7 @@ def logout():
 
 
 # =========================
-# EJEMPLO CRUD USUARIOS
+# CRUD USUARIOS
 # =========================
 @app.route("/usuarios")
 @login_required
@@ -251,7 +254,7 @@ def usuarios_list():
     #return "SI FUNCIONA USUARIOS"
     return render_template(
         "usuarios.html",
-        lista=User.query.all(),
+        lista=Usuario.query.all(),
         roles=Role.query.all()
     )
 @app.route("/usuarios/nuevo", methods=["POST"])
@@ -267,6 +270,7 @@ def usuarios_nuevo():
         email = request.form.get("email")
         full_name = request.form.get("full_name")
         roles_ids = request.form.getlist("roles")  # 👈 importante
+        proyecto_ids=request.form.getlist("proyectos")
 
         # -------------------------
         # VALIDACIONES
@@ -276,19 +280,19 @@ def usuarios_nuevo():
             return redirect(url_for("usuarios_list"))
 
         # Usuario único
-        if User.query.filter_by(username=username).first():
+        if Usuario.query.filter_by(username=username).first():
             flash("El username ya existe", "warning")
             return redirect(url_for("usuarios_list"))
 
         # Email único (opcional pero recomendado)
-        if email and User.query.filter_by(email=email).first():
+        if email and Usuario.query.filter_by(email=email).first():
             flash("El email ya está registrado", "warning")
             return redirect(url_for("usuarios_list"))
 
         # -------------------------
         # CREAR USUARIO
         # -------------------------
-        nuevo_usuario = User(
+        nuevo_usuario = Usuario(
             username=username,
             email=email,
             full_name=full_name
@@ -303,7 +307,12 @@ def usuarios_nuevo():
         if roles_ids:
             roles = Role.query.filter(Role.id.in_(roles_ids)).all()
             nuevo_usuario.roles = roles  # 👈 relación many-to-many
-
+        # -------------------------
+        # ASIGNAR Proyectos
+        # -------------------------
+        if proyecto_ids:
+            proyectos = Proyecto.query.filter(Proyecto.id.in_(proyecto_ids)).all()
+            nuevo_usuario.proyectos = proyectos 
         # -------------------------
         # GUARDAR
         # -------------------------
@@ -322,13 +331,14 @@ def usuarios_nuevo():
 @login_required
 @permission_required("usuarios","editar")
 def usuarios_editar(id):
-    usuario = User.query.get_or_404(id)
+    usuario = Usuario.query.get_or_404(id)
 
     try:
         username = request.form.get("username")
         email = request.form.get("email")
         full_name = request.form.get("full_name")
         roles_ids = request.form.getlist("roles")
+        proyectos_ids=request.form.getlist("proyectos")
 
         # -------------------------
         # VALIDACIONES
@@ -338,14 +348,14 @@ def usuarios_editar(id):
             return redirect(url_for("usuarios_list"))
 
         # Validar username único (excepto el mismo usuario)
-        existe = User.query.filter(User.username == username, User.id != id).first()
+        existe = Usuario.query.filter(Usuario.username == username, Usuario.id != id).first()
         if existe:
             flash("El username ya está en uso", "warning")
             return redirect(url_for("usuarios_list"))
 
         # Validar email único
         if email:
-            existe_email = User.query.filter(User.email == email, User.id != id).first()
+            existe_email = Usuario.query.filter(Usuario.email == email, Usuario.id != id).first()
             if existe_email:
                 flash("El email ya está en uso", "warning")
                 return redirect(url_for("usuarios_list"))
@@ -365,6 +375,12 @@ def usuarios_editar(id):
         if roles_ids:
             roles = Role.query.filter(Role.id.in_(roles_ids)).all()
             usuario.roles = roles
+        # -------------------------
+        # ACTUALIZAR proyectos
+        # -------------------------
+        if proyectos_ids:
+            proyectos = Proyecto.query.filter(Proyecto.id.in_(proyectos_ids)).all()
+            usuario.proyectos = proyectos    
 
         db.session.commit()
         flash("Usuario actualizado correctamente", "success")
@@ -379,7 +395,7 @@ def usuarios_editar(id):
 @login_required
 @permission_required("usuarios","eliminar")
 def usuarios_eliminar(id):
-    usuario = User.query.get_or_404(id)
+    usuario = Usuario.query.get_or_404(id)
 
     try:
         # ⚠️ evitar eliminarse a sí mismo
@@ -501,1226 +517,943 @@ def roles_eliminar(id):
         flash(f"No se pudo eliminar: {str(e)}", "danger")
 
     return redirect(url_for("roles_list"))
+
+
 # =========================
-# CRUD PRODUCTO
+# VEHICULOS
 # =========================
-@app.route("/productos")
+@app.route("/vehiculos")
 @login_required
-@permission_required("productos", "ver")
-def productos_list():
+@permission_required("vehiculos", "ver")
+def vehiculos_list():
     return render_template(
-        "productos.html",
-        lista=Producto.query.all(),
-        categorias=Categoria.query.all()
+        "vehiculos.html",
+        lista=Vehiculo.query.all(),
+        proyectos=Proyecto.query.all()
     )
 
-@app.route("/productos/nuevo", methods=["POST"])
+
+@app.route("/vehiculos/nuevo", methods=["POST"])
 @login_required
-@permission_required("productos", "crear")
-def productos_nuevo():
+@permission_required("vehiculos", "crear")
+def vehiculos_nuevo():
 
     try:
         nombre = request.form.get("nombre", "").strip()
-        codigo = request.form.get("codigo_barras", "").strip()
-        categoria_id = request.form.get("categoria_id")
-        precio_compra = request.form.get("precio_compra")
-        precio_venta = request.form.get("precio_venta")
-        stock = request.form.get("stock")
+        placa = request.form.get("placa", "").strip()
+        tipo = request.form.get("tipo")
+        proyecto_id = request.form.get("proyecto_id")
+        rendimiento = request.form.get("rendimiento_promedio")
 
-        # 🔥 VALIDACIONES MEJORADAS
-            
-        if not codigo:
-            flash("Debe ingresar o escanear un código", "danger")
-            return redirect(url_for("productos_list"))
+        if not nombre:
+            flash("Debe ingresar el equipo", "danger")
+            return redirect(url_for("vehiculos_list"))
+        
+        # Validar vehiculo único (excepto el mismo usuario)
+        existe = Vehiculo.query.filter(Vehiculo.placa == placa).first()
+        if existe:
+            flash("La placa del vehículo ya está en uso", "warning")
+            return redirect(url_for("vehiculos_list"))
+        
+        try:
+            rendimiento = float(rendimiento) if rendimiento else None
+        except:
+            flash("Rendimiento inválido", "danger")
+            return redirect(url_for("vehiculos_list"))
+        
+
+        nuevo = Vehiculo(
+            nombre=nombre,
+            placa=placa,
+            tipo=tipo,
+            proyecto_id=int(proyecto_id) if proyecto_id else None,
+            rendimiento_promedio=rendimiento
+        )
+
+        db.session.add(nuevo)
+        db.session.commit()
+
+        flash("✅ Vehículo creado", "success")
+
+    except Exception as e:
+        db.session.rollback()
+        flash(f"Error: {str(e)}", "danger")
+
+    return redirect(url_for("vehiculos_list"))
+
+
+@app.route("/vehiculos/editar/<int:id>", methods=["POST"])
+@login_required
+@permission_required("vehiculos", "editar")
+def vehiculos_editar(id):
+    vehiculo = Vehiculo.query.get_or_404(id)
+
+    try:
+        nombre = request.form.get("nombre")
+        placa = request.form.get("placa")
+        tipo = request.form.get("tipo")
+        rendimiento = request.form.get("rendimiento_promedio")
+        proyecto_id=request.form.get("proyecto_id")
+
+        # -------------------------
+        # VALIDACIONES
+        # -------------------------
+        if not nombre:
+            flash("El nombre es obligatorio", "danger")
+            return redirect(url_for("vehiculos_list"))
+
+        # -------------------------
+        # ACTUALIZAR DATOS
+        # -------------------------
+        vehiculo.nombre = nombre
+        vehiculo.placa = placa
+        vehiculo.tipo = tipo
+        vehiculo.rendimiento_promedio=float(rendimiento) if rendimiento else None
+        vehiculo.proyecto_id=int(proyecto_id) if proyecto_id else None
+
+        db.session.commit()
+        flash("Vehiculo actualizado", "success")
+
+    except Exception as e:
+        db.session.rollback()
+        flash(f"Error: {str(e)}", "danger")
+
+    return redirect(url_for("vehiculos_list"))
+
+
+@app.route("/vehiculo/eliminar/<int:id>", methods=["POST"])
+@login_required
+@permission_required("vehiculos", "eliminar")
+def vehiculos_eliminar(id):
+
+    vehiculo = Vehiculo.query.get_or_404(id)
+
+    try:
+        db.session.delete(vehiculo)
+        db.session.commit()
+        flash("Vehiculo eliminado", "success")
+
+    except Exception as e:
+        db.session.rollback()
+        flash(f"No se pudo eliminar: {str(e)}", "danger")
+        flash(str(e), "danger")
+
+    return redirect(url_for("vehiculos_list"))
+
+# =========================
+# PROYECTOS
+# =========================
+
+@app.route("/proyectos")
+@login_required
+@permission_required("proyectos","ver")
+def proyectos_list():
+
+    lista = Proyecto.query.order_by(Proyecto.id.desc()).all()
+
+    return render_template(
+        "proyectos.html",
+        lista=lista
+    )
+
+@app.route("/proyectos/nuevo", methods=["POST"])
+@login_required
+@permission_required("proyectos","crear")
+def proyectos_nuevo():
+
+    nombre = request.form.get("nombre")
+    ubicacion = request.form.get("ubicacion")
+    nombre_corto = request.form.get("nombre_corto")
+
+    nuevo = Proyecto(
+        nombre=nombre,
+        ubicacion=ubicacion,
+        nombre_corto=nombre_corto,
+        activo=True
+    )
+
+    db.session.add(nuevo)
+    db.session.commit()
+
+    flash("Proyecto registrado correctamente", "success")
+
+    return redirect(url_for("proyectos_list"))
+
+
+@app.route("/proyectos/editar/<int:id>", methods=["POST"])
+@login_required
+@permission_required("proyectos","editar")
+def proyectos_editar(id):
+
+    proyecto = Proyecto.query.get_or_404(id)
+
+    proyecto.nombre = request.form.get("nombre")
+    proyecto.ubicacion = request.form.get("ubicacion")
+    proyecto.nombre_corto = request.form.get("nombre_corto")
+    proyecto.activo = True if request.form.get("activo") == "1" else False
+
+    db.session.commit()
+
+    flash("Proyecto actualizado correctamente", "success")
+
+    return redirect(url_for("proyectos_list"))
+
+
+@app.route("/proyectos/eliminar/<int:id>", methods=["POST"])
+@login_required
+@permission_required("proyectos","eliminar")
+def proyectos_eliminar(id):
+
+    proyecto = Proyecto.query.get_or_404(id)
+
+    db.session.delete(proyecto)
+    db.session.commit()
+
+    flash("Proyecto eliminado correctamente", "success")
+
+    return redirect(url_for("proyectos_list"))
+
+# =========================
+# OPERADORES
+# =========================
+@app.route("/operadores")
+@login_required
+@permission_required("operadores", "ver")
+def operadores_list():
+    return render_template(
+        "operadores.html",
+        lista=Operador.query.all(),
+        proyectos=Proyecto.query.all()
+    )
+
+@app.route("/operadores/nuevo", methods=["POST"])
+@login_required
+@permission_required("operadores", "crear")
+def operadores_nuevo():
+
+    try:
+        nombre = request.form.get("nombre", "").strip()
+        documento = request.form.get("documento", "").strip()
+        proyecto_id = request.form.get("proyecto_id")
 
         if not nombre:
             flash("Debe ingresar nombre", "danger")
-            return redirect(url_for("productos_list"))
+            return redirect(url_for("operadores_list"))
 
-        # 🔥 VALIDACIÓN NUMÉRICA SEGURA
-        try:
-            precio_compra = float(precio_compra)
-            precio_venta = float(precio_venta)
-            stock = float(stock)
-        except:
-            flash("Valores numéricos inválidos", "danger")
-            return redirect(url_for("productos_list"))
-
-        # 🔥 VALIDACIÓN ÚNICA MÁS EFICIENTE
-        existente = Producto.query.filter(
-            (Producto.codigo_barras == codigo) |
-            (Producto.nombre == nombre)
-        ).first()
-
-        if existente:
-            flash("Producto ya existe (nombre o código)", "warning")
-            return redirect(url_for("productos_list"))
-
-        producto = Producto(
+        nuevo = Operador(
             nombre=nombre,
-            codigo_barras=codigo,
-            categoria_id=int(categoria_id) if categoria_id else None,
-            precio_compra=precio_compra,
-            precio_venta=precio_venta,
-            stock=stock
+            documento=documento,
+            proyecto_id=int(proyecto_id) if proyecto_id else None
         )
 
-        db.session.add(producto)
+        db.session.add(nuevo)
         db.session.commit()
 
-        flash("✅ Producto creado correctamente", "success")
+        flash("✅ Operador creado", "success")
 
     except Exception as e:
         db.session.rollback()
         flash(f"Error: {str(e)}", "danger")
 
-    return redirect(url_for("productos_list"))
+    return redirect(url_for("operadores_list"))
 
 
-@app.route("/productos/editar/<int:id>", methods=["POST"])
+@app.route("/operadores/editar/<int:id>", methods=["POST"])
 @login_required
-@permission_required("productos", "editar")
-def productos_editar(id):
+@permission_required("operadores", "editar")
+def operadores_editar(id):
 
-    producto = Producto.query.get_or_404(id)
-
-    try:
-        producto.nombre = request.form.get("nombre")
-        producto.codigo_barras = request.form.get("codigo_barras")
-        producto.categoria_id = request.form.get("categoria_id")
-        producto.precio_compra = request.form.get("precio_compra")
-        producto.precio_venta = request.form.get("precio_venta")
-        producto.stock = request.form.get("stock")
-
-        archivo = request.files.get("imagen")
-
-        if archivo and archivo.filename != "":
-            nombre_archivo = secure_filename(archivo.filename)
-            ruta = os.path.join(app.config["UPLOAD_FOLDER"], nombre_archivo)
-            archivo.save(ruta)
-            producto.imagen = nombre_archivo
-
-        db.session.commit()
-        flash("Producto actualizado", "success")
-
-    except Exception as e:
-        db.session.rollback()
-        flash(str(e), "danger")
-
-    return redirect(url_for("productos_list"))
-
-
-@app.route("/productos/eliminar/<int:id>", methods=["POST"])
-@login_required
-@permission_required("productos", "eliminar")
-def productos_eliminar(id):
-
-    producto = Producto.query.get_or_404(id)
-
-    try:
-        db.session.delete(producto)
-        db.session.commit()
-        flash("Producto eliminado", "success")
-
-    except Exception as e:
-        db.session.rollback()
-        flash(str(e), "danger")
-
-    return redirect(url_for("productos_list"))
-
-@app.route("/api/producto")
-@login_required
-def buscar_productos():
-    q = request.args.get("q", "").strip()
-
-    if not q:
-        return jsonify([])
-
-    productos = Producto.query.filter(
-        or_(
-            Producto.nombre.ilike(f"%{q}%"),
-            cast(Producto.codigo_barras, String).ilike(f"%{q}%")
-        )
-    ).order_by(
-        Producto.nombre.asc()
-    ).limit(10).all()
-
-    return jsonify([
-        {
-            "id": p.id,
-            "codigo_barras": p.codigo_barras,
-            "nombre": p.nombre,
-            "precio": p.precio_venta,
-            "stock":p.stock
-        } for p in productos
-    ])
-
-@app.route("/productos/buscar")
-@login_required
-def productos_buscar():
-    codigo = request.args.get("codigo")
-
-    producto = Producto.query.filter_by(codigo_barras=codigo).first()
-
-    if producto:
-        return {
-            "existe": True,
-            "codigo_barras": producto.codigo_barras,
-            "nombre": producto.nombre,
-            "precio": producto.precio_venta
-        }
-    else:
-        return {"existe": False}
-
-#========================
-# CRUD CLIENTES
-# =======================
-@app.route("/clientes")
-@login_required
-@permission_required("clientes", "ver")
-def clientes_list():
-    return render_template("clientes.html", lista=Cliente.query.all())
-
-
-@app.route("/clientes/nuevo", methods=["POST"])
-@login_required
-@permission_required("clientes", "crear")
-def clientes_nuevo():
-
-    try:
-        # Detectar si es JSON (desde POS)
-        es_json = request.is_json
-
-        if es_json:
-            data = request.get_json()
-            nombre = data.get("nombre")
-            documento = data.get("documento")
-            telefono = data.get("telefono")
-        else:
-            nombre = request.form.get("nombre")
-            documento = request.form.get("documento")
-            telefono = request.form.get("telefono")
-            direccion=request.form.get("direccion")
-
-        # VALIDACIONES
-        error = validar_texto(nombre, "Nombre")
-        if error:
-            if es_json:
-                return jsonify({"ok": False, "error": error})
-            flash(error, "danger")
-            return redirect(url_for("clientes_list"))
-
-        if documento and Cliente.query.filter_by(documento=documento).first():
-            if es_json:
-                return jsonify({"ok": False, "error": "Documento ya registrado"})
-            flash("Documento ya registrado", "warning")
-            return redirect(url_for("clientes_list"))
-
-        cliente = Cliente(
-            nombre=nombre,
-            documento=documento,
-            telefono=telefono,
-            direccion=direccion
-        )
-
-        db.session.add(cliente)
-        db.session.commit()
-
-        # 🔥 RESPUESTA DIFERENTE SEGÚN CONTEXTO
-        if es_json:
-            return jsonify({
-                "ok": True,
-                "cliente": {
-                    "id": cliente.id,
-                    "nombre": cliente.nombre,
-                    "documento": cliente.documento,
-                    "direccion":cliente.direccion
-                }
-            })
-
-        flash("Cliente creado", "success")
-
-    except Exception as e:
-        db.session.rollback()
-
-        if request.is_json:
-            return jsonify({"ok": False, "error": str(e)})
-
-        flash(str(e), "danger")
-
-    return redirect(url_for("clientes_list"))
-
-
-@app.route("/clientes/editar/<int:id>", methods=["POST"])
-@login_required
-@permission_required("clientes", "editar")
-def clientes_editar(id):
-
-    cli = Cliente.query.get_or_404(id)
-
-    cli.nombre = request.form.get("nombre")
-    cli.documento = request.form.get("documento")
-    cli.telefono = request.form.get("telefono")
-    cli.direccion=request.form.get("direccion")
-
-    db.session.commit()
-
-    flash("Cliente actualizado", "success")
-    return redirect(url_for("clientes_list"))
-
-@app.route("/clientes/eliminar/<int:id>", methods=["POST"])
-@login_required
-@permission_required("clientes", "eliminar")
-def clientes_eliminar(id):
-
-    cliente = Cliente.query.get_or_404(id)
-
-    try:
-        # validar si tiene ventas
-        if Venta.query.filter_by(cliente_id=cliente.id).first():
-            flash("No puedes eliminar cliente con ventas", "danger")
-            return redirect(url_for("clientes_list"))
-
-        db.session.delete(cliente)
-        db.session.commit()
-
-        flash("Cliente eliminado", "success")
-
-    except Exception as e:
-        db.session.rollback()
-        flash(str(e), "danger")
-
-    return redirect(url_for("clientes_list"))
-
-# =========================
-# CRUD VENTAS
-# =========================
-@app.route("/ventas")
-@login_required
-def ventas_list():
-    almacenes = Almacen.query.filter_by(activo=True).all()
-
-    return render_template(
-        "ventas.html",
-        almacenes=almacenes
-    )
-@app.route("/ventas/nuevo", methods=["POST"])
-@login_required
-@permission_required("ventas", "crear")
-def ventas_nuevo():
-
-    try:
-        cliente_id = request.form.get("cliente_id")
-        almacen_id = int(request.form.get("almacen_id"))
-        productos = request.form.getlist("producto_id")
-        cantidades = request.form.getlist("cantidad")
-        tipo_comprobante = request.form.get("tipo_comprobante")
-
-        if not productos:
-            flash("Debe agregar productos", "danger")
-            return redirect(url_for("ventas_list"))
-
-        venta = Venta(
-            cliente_id=int(cliente_id) if cliente_id else None,
-            usuario_id=current_user.id,
-            tipo_comprobante=tipo_comprobante,
-            total=0
-        )
-
-        db.session.add(venta)
-        db.session.flush()
-
-        total = 0
-
-        for i in range(len(productos)):
-            producto_id = int(productos[i])
-            cantidad = float(cantidades[i])
-
-            producto = Producto.query.get(producto_id)
-            stock_item = obtener_stock(producto.id, almacen_id)
-
-            # ✔ Calcula stock real considerando la venta actual
-            stock_disponible = stock_item.stock
-
-            if cantidad > stock_disponible:
-                
-                raise Exception(f"Stock insuficiente en almacén {stock_item.almacen.nombre} para {producto.nombre}. Disponible: {stock_disponible}")
-
-            stock_anterior = stock_item.stock
-
-            subtotal = cantidad * producto.precio_venta
-
-            detalle = DetalleVenta(
-                venta_id=venta.id,
-                producto_id=producto.id,
-                cantidad=cantidad,
-                precio=producto.precio_venta,
-                subtotal=subtotal
-            )
-            db.session.add(detalle)
-
-            # DESCONTAR STOCK
-            stock_item.stock -= cantidad
-
-            # ACTUALIZAR STOCK GLOBAL
-            producto.stock = db.session.query(
-                func.coalesce(func.sum(StockAlmacen.stock), 0)
-            ).filter(
-                StockAlmacen.producto_id == producto.id
-            ).scalar()
-            # =========================
-            # KARDEX VENTA
-            # =========================
-            movimiento = KardexMovimiento(
-                producto_id=producto.id,
-                almacen_id=almacen_id,
-                tipo_movimiento="VENTA",
-                cantidad=cantidad,
-                stock_anterior=stock_anterior,
-                stock_nuevo=stock_item.stock,
-                costo_unitario=producto.precio_compra or 0,
-                usuario_id=current_user.id,
-                venta_id=venta.id,
-                observacion=f"Venta #{venta.id}"
-            )
-            db.session.add(movimiento)
-
-            total += subtotal
-
-        venta.total = total
-
-        db.session.commit()
-
-        flash("Venta registrada correctamente", "success")
-
-    except Exception as e:
-        db.session.rollback()
-        flash(str(e), "danger")
-
-    return redirect(url_for("ventas_list"))
-
-@app.route("/api/clientes")
-def buscar_clientes():
-    q = request.args.get("q", "")
-
-    clientes = Cliente.query.filter(
-        (Cliente.nombre.ilike(f"%{q}%")) |
-        (cast(Cliente.documento, String).ilike(f"%{q}%"))
-    ).limit(10).all()
-
-    return jsonify([
-        {
-            "id": c.id,
-            "nombre": c.nombre,
-            "documento": c.documento,
-            "direccion": getattr(c, "direccion", "")
-        }
-        for c in clientes
-    ])
-
-
-@app.route("/api/clientes/nuevo", methods=["POST"])
-@login_required
-def crear_cliente_rapido():
-    try:
-        data = request.get_json()
-
-        nombre = data.get("nombre", "").strip()
-        documento = data.get("documento", "").strip()
-        direccion = data.get("direccion", "").strip()
-
-        if not nombre:
-            return jsonify({
-                "ok": False,
-                "error": "Nombre requerido"
-            })
-
-        # validar duplicado documento
-        if documento:
-            existe = Cliente.query.filter_by(documento=documento).first()
-            if existe:
-                return jsonify({
-                    "ok": False,
-                    "error": "Documento ya existe"
-                })
-
-        cliente = Cliente(
-            nombre=nombre,
-            documento=documento,
-            direccion=direccion
-        )
-
-        db.session.add(cliente)
-        db.session.commit()
-
-        return jsonify({
-            "ok": True,
-            "cliente": {
-                "id": cliente.id,
-                "nombre": cliente.nombre,
-                "documento": cliente.documento
-            }
-        })
-
-    except Exception as e:
-        db.session.rollback()
-        return jsonify({
-            "ok": False,
-            "error": str(e)
-        })
-    
-@app.route("/api/ventas_recientes")
-def ventas_recientes():
-
-    ventas = Venta.query.order_by(Venta.id.desc()).limit(10).all()
-
-    return jsonify([
-        {
-            "id": v.id,
-            "total": v.total,
-            "fecha": v.fecha.strftime("%d/%m/%Y"),  # 🔥 fecha
-            "hora": v.fecha.strftime("%H:%M:%S"),   # 🔥 hora
-            "cliente": v.cliente.nombre if v.cliente else None,
-            "tipo_pago": "Efectivo"  # 🔥 o desde DB si lo tienes
-        }
-        for v in ventas
-    ])
-
-# =========================
-# CRUD COMPRAS
-# =========================
-@app.route("/compras")
-@login_required
-def compras_list():
-
-    almacenes = Almacen.query.filter_by(activo=True).all()
-
-    return render_template(
-        "compras.html",
-        almacenes=almacenes
-    )
-   
-
-@app.route("/compras/nuevo", methods=["GET", "POST"])
-@login_required
-@permission_required("compras", "crear")
-def compras_nuevo():
-
-    if request.method == "GET":
-            almacenes = Almacen.query.filter_by(activo=True).all()
-
-            return render_template(
-                "compras.html",
-                almacenes=almacenes
-            )
-
-    try:
-        proveedor_id = request.form.get("proveedor_id")
-        productos = request.form.getlist("producto_id")
-        cantidades = request.form.getlist("cantidad")
-        precios = request.form.getlist("precio")
-
-        if not proveedor_id:
-            flash("Seleccione proveedor", "danger")
-            return redirect(url_for("compras_nuevo"))
-
-        if not productos:
-            flash("Debe agregar productos", "danger")
-            return redirect(url_for("compras_nuevo"))
-
-        almacen_id = request.form.get("almacen_id")
-        compra = Compra(
-            proveedor_id=int(proveedor_id),
-            almacen_id=int(almacen_id),
-            usuario_id=current_user.id,
-            total=0
-        )
-
-        db.session.add(compra)
-        db.session.flush()  # 🔥 IMPORTANTE (para obtener compra.id)
-
-        total = 0
-
-        for i in range(len(productos)):
-
-            producto_id = int(productos[i])
-            cantidad = float(cantidades[i])
-            precio = float(precios[i])
-
-            producto = Producto.query.get(producto_id)
-
-            subtotal = cantidad * precio
-
-            # =========================
-            # DETALLE COMPRA
-            # =========================
-            detalle = DetalleCompra(
-                compra_id=compra.id,
-                producto_id=producto.id,
-                cantidad=cantidad,
-                precio=precio,
-                subtotal=subtotal
-            )
-            db.session.add(detalle)
-
-            # =========================
-            # STOCK POR ALMACÉN
-            # =========================
-            stock_item = obtener_stock(producto.id, compra.almacen_id)
-
-            stock_anterior = stock_item.stock
-
-            # =========================
-            # PROMEDIO PONDERADO
-            # =========================
-            stock_actual = stock_item.stock
-            costo_actual = producto.precio_compra or 0
-
-            nuevo_costo = (
-                ((stock_actual * costo_actual) + (cantidad * precio))
-                / (stock_actual + cantidad)
-            ) if (stock_actual + cantidad) > 0 else precio
-
-            producto.precio_compra = nuevo_costo
-
-            # =========================
-            # ACTUALIZAR STOCK
-            # =========================
-            stock_item.stock += cantidad
-
-            # stock global opcional
-            producto.stock = db.session.query(
-                func.coalesce(func.sum(StockAlmacen.stock), 0)
-            ).filter(
-                StockAlmacen.producto_id == producto.id
-            ).scalar()
-
-            # =========================
-            # KARDEX MOVIMIENTO
-            # =========================
-            movimiento = KardexMovimiento(
-                producto_id=producto.id,
-                almacen_id=compra.almacen_id,
-                tipo_movimiento="COMPRA",
-                cantidad=cantidad,
-                stock_anterior=stock_anterior,
-                stock_nuevo=stock_item.stock,
-                costo_unitario=precio,
-                usuario_id=current_user.id,
-                compra_id=compra.id,
-                observacion=f"Compra #{compra.id}"
-            )
-
-            db.session.add(movimiento)
-
-            total += subtotal
-
-        compra.total = total
-
-        db.session.commit()
-
-        flash("✅ Compra registrada correctamente", "success")
-
-    except Exception as e:
-        db.session.rollback()
-        flash(str(e), "danger")
-
-    return redirect(url_for("compras_nuevo"))
-
-#======================================================================================
-# PROVEEDORES 
-#======================================================================================
-@app.route("/proveedores")
-@login_required
-@permission_required("proveedores", "ver")
-def proveedores_list():
-    return render_template("proveedores.html", lista=Proveedor.query.all())
-
-
-@app.route("/proveedores/nuevo", methods=["POST"])
-@login_required
-@permission_required("proveedores", "crear")
-def proveedores_nuevo():
-
-    try:
-        # Detectar si es JSON (desde POS)
-        es_json = request.is_json
-
-        if es_json:
-            data = request.get_json()
-            nombre = data.get("nombre")
-            direccion = data.get("direccion")
-            telefono = data.get("telefono")
-        else:
-            nombre = request.form.get("nombre")
-            direccion = request.form.get("direccion")
-            telefono = request.form.get("telefono")
-
-        # VALIDACIONES
-        error = validar_texto(nombre, "Nombre")
-        if error:
-            if es_json:
-                return jsonify({"ok": False, "error": error})
-            flash(error, "danger")
-            return redirect(url_for("proveedores_list"))
-
-        if nombre and Proveedor.query.filter_by(nombre=nombre).first():
-            if es_json:
-                return jsonify({"ok": False, "error": "Proveedor ya registrado"})
-            flash("Proveedor ya registrado", "warning")
-            return redirect(url_for("proveedores_list"))
-
-        proveedor = Proveedor(
-            nombre=nombre,
-            direccion=direccion,
-            telefono=telefono
-        )
-
-        db.session.add(proveedor)
-        db.session.commit()
-
-        # 🔥 RESPUESTA DIFERENTE SEGÚN CONTEXTO
-        if es_json:
-            return jsonify({
-                "ok": True,
-                "proveedor": {
-                    "id": proveedor.id,
-                    "nombre": proveedor.nombre,
-                    "direccion": proveedor.direccion
-                }
-            })
-
-        flash("Proveedor creado", "success")
-
-    except Exception as e:
-        db.session.rollback()
-
-        if request.is_json:
-            return jsonify({"ok": False, "error": str(e)})
-
-        flash(str(e), "danger")
-
-    return redirect(url_for("proveedores_list"))
-
-
-@app.route("/proveedores/editar/<int:id>", methods=["POST"])
-@login_required
-@permission_required("proveedores", "editar")
-def proveedores_editar(id):
-
-    prov = Proveedor.query.get_or_404(id)
-
-    prov.nombre = request.form.get("nombre")
-    prov.direccion = request.form.get("direccion")
-    prov.telefono = request.form.get("telefono")
-
-    db.session.commit()
-
-    flash("Proveedor actualizado", "success")
-    return redirect(url_for("proveedores_list"))
-
-@app.route("/proveedores/eliminar/<int:id>", methods=["POST"])
-@login_required
-@permission_required("proveedores", "eliminar")
-def proveedores_eliminar(id):
-
-    proveedor = Proveedor.query.get_or_404(id)
-
-    try:
-        # validar si tiene ventas
-        if Compra.query.filter_by(proveedor_id=proveedor.id).first():
-            flash("No puedes eliminar proveedor con compras", "danger")
-            return redirect(url_for("proveedores_list"))
-
-        db.session.delete(proveedor)
-        db.session.commit()
-
-        flash("Proveedor eliminado", "success")
-
-    except Exception as e:
-        db.session.rollback()
-        flash(str(e), "danger")
-
-    return redirect(url_for("proveedores_list"))
-
-@app.route("/api/proveedores")
-def api_proveedores():
-    q = request.args.get("q", "")
-
-    data = Proveedor.query.filter(
-        Proveedor.nombre.ilike(f"%{q}%")
-    ).limit(10).all()
-
-    return jsonify([
-        {"id": p.id, "nombre": p.nombre}
-        for p in data
-    ])
-@app.route("/proveedores/nuevo", methods=["POST"])
-def proveedor_nuevo_api():
-
-    data = request.get_json()
-
-    p = Proveedor(
-        nombre=data["nombre"],
-        telefono=data.get("telefono"),
-        direccion=data.get("direccion")
-    )
-
-    db.session.add(p)
-    db.session.commit()
-
-    return jsonify({"ok": True, "id": p.id})
-# =========================
-# CRUD CATEGORIAS
-# =========================
-@app.route("/categorias")
-@login_required
-@permission_required("categorias", "ver")
-def categorias_list():
-
-    categorias = Categoria.query.filter_by(parent_id=None).all()
-
-    return render_template(
-        "categorias.html",
-        categorias=categorias,
-        todas=Categoria.query.all()
-    )
- 
-@app.route("/categorias/nuevo", methods=["POST"])
-@login_required
-@permission_required("categorias", "crear")
-def categorias_nuevo():
+    operador = Operador.query.get_or_404(id)
 
     try:
         nombre = request.form.get("nombre", "").strip()
-        parent_id = request.form.get("parent_id")
+        documento = request.form.get("documento", "").strip()
+        proyecto_id = request.form.get("proyecto_id")
 
-        # 🔥 FIX CLAVE
-        parent_id = int(parent_id) if parent_id else None
-
-        # VALIDACIÓN
         if not nombre:
-            flash("Nombre requerido", "danger")
-            return redirect(url_for("categorias_list"))
+            flash("Debe ingresar nombre", "danger")
+            return redirect(url_for("operadores_list"))
 
-        # 🔥 VALIDACIÓN CORRECTA
-        existente = Categoria.query.filter_by(
-            nombre=nombre,
-            parent_id=parent_id
-        ).first()
+        operador.nombre = nombre
+        operador.documento = documento
+        operador.proyecto_id = int(proyecto_id) if proyecto_id else None
 
-        if existente:
-            flash("Categoría ya existe en ese nivel", "warning")
-            return redirect(url_for("categorias_list"))
-
-        categoria = Categoria(
-            nombre=nombre,
-            parent_id=parent_id
-        )
-
-        db.session.add(categoria)
         db.session.commit()
 
-        flash("✅ Categoría creada", "success")
+        flash("Operador actualizado", "success")
 
     except Exception as e:
         db.session.rollback()
         flash(f"Error: {str(e)}", "danger")
 
-    return redirect(url_for("categorias_list"))
+    return redirect(url_for("operadores_list"))
 
-@app.route("/categorias/editar/<int:id>", methods=["POST"])
+
+@app.route("/operadores/eliminar/<int:id>", methods=["POST"])
 @login_required
-@permission_required("categorias", "editar")
-def categorias_editar(id):
+@permission_required("operadores", "eliminar")
+def operadores_eliminar(id):
 
-    cat = Categoria.query.get_or_404(id)
+    operador = Operador.query.get_or_404(id)
 
-    cat.nombre = request.form.get("nombre")
-    parent_id = request.form.get("parent_id")
+    try:
+        db.session.delete(operador)
+        db.session.commit()
 
-    cat.parent_id = int(parent_id) if parent_id else None
+        flash("Operador eliminado", "success")
 
-    db.session.commit()
+    except Exception as e:
+        db.session.rollback()
+        flash(f"Error: {str(e)}", "danger")
 
-    flash("Categoría actualizada", "success")
-    return redirect(url_for("categorias_list"))
+    return redirect(url_for("operadores_list"))
+# =========================
+# TANQUES
+# =========================
 
-@app.route("/categorias/eliminar/<int:id>", methods=["POST"])
+@app.route("/tanques")
 @login_required
-@permission_required("categorias", "eliminar")
-def categorias_eliminar(id):
+@permission_required("tanques", "ver")
+def tanques_list():
+    return render_template(
+        "tanques.html",
+        lista=Tanque.query.all(),
+        proyectos=Proyecto.query.all()
+    )
 
-    cat = Categoria.query.get_or_404(id)
+@app.route("/tanques/nuevo", methods=["POST"])
+@login_required
+@permission_required("tanques", "crear")
+def tanques_nuevo():
 
-    if cat.hijos:
-        flash("No puedes eliminar una categoría con subcategorías", "danger")
-        return redirect(url_for("categorias_list"))
+    try:
+        nombre = request.form.get("nombre", "").strip()
+        capacidad = request.form.get("capacidad")
+        stock = request.form.get("stock_actual")
+        minimo = request.form.get("stock_minimo")
+        proyecto_id = request.form.get("proyecto_id")
 
-    db.session.delete(cat)
-    db.session.commit()
+        if not nombre:
+            flash("Debe ingresar nombre", "danger")
+            return redirect(url_for("tanques_list"))
 
-    flash("Categoría eliminada", "success")
-    return redirect(url_for("categorias_list"))
+        try:
+            capacidad = float(capacidad)
+            stock = float(stock)
+            minimo = float(minimo)
+        except:
+            flash("Valores numéricos inválidos", "danger")
+            return redirect(url_for("tanques_list"))
 
-#===============================================================
-# Kardex
-# ==============================================================
+        nuevo = Tanque(
+            nombre=nombre,
+            capacidad=capacidad,
+            stock_actual=stock,
+            stock_minimo=minimo,
+            proyecto_id=int(proyecto_id) if proyecto_id else None,
+        )
+
+        db.session.add(nuevo)
+        db.session.commit()
+
+        flash("✅ Tanque creado", "success")
+
+    except Exception as e:
+        db.session.rollback()
+        flash(f"Error: {str(e)}", "danger")
+
+    return redirect(url_for("tanques_list"))
+
+
+@app.route("/tanques/editar/<int:id>", methods=["POST"])
+@login_required
+@permission_required("tanques", "editar")
+def tanques_editar(id):
+
+    tanque = Tanque.query.get_or_404(id)
+
+    try:
+        tanque.nombre = request.form.get("nombre")
+        tanque.capacidad = float(request.form.get("capacidad") or 0)
+        tanque.stock_actual = float(request.form.get("stock_actual") or 0)
+        tanque.stock_minimo = float(request.form.get("stock_minimo") or 0)
+
+        db.session.commit()
+
+        flash("Tanque actualizado", "success")
+
+    except Exception as e:
+        db.session.rollback()
+        flash(f"Error: {str(e)}", "danger")
+
+    return redirect(url_for("tanques_list"))
+
+
+@app.route("/tanques/eliminar/<int:id>", methods=["POST"])
+@login_required
+@permission_required("tanques", "eliminar")
+def tanques_eliminar(id):
+
+    tanque = Tanque.query.get_or_404(id)
+
+    try:
+        db.session.delete(tanque)
+        db.session.commit()
+
+        flash("Tanque eliminado", "success")
+
+    except Exception as e:
+        db.session.rollback()
+        flash(f"Error: {str(e)}", "danger")
+
+    return redirect(url_for("tanques_list"))
+#--------------------------------------------------
+# KARDEX
+#--------------------------------------------------
 @app.route("/kardex")
 @login_required
 @permission_required("kardex", "ver")
-def kardex_index():
-
-    productos = Producto.query.filter_by(activo=True).all()
-    almacenes = Almacen.query.filter_by(activo=True).all()
-
-    movimientos = KardexMovimiento.query.order_by(
-        KardexMovimiento.fecha.desc()
-    ).limit(100).all()
-
-    total_productos = Producto.query.filter_by(activo=True).count()
-
-    total_stock = db.session.query(
-        func.coalesce(func.sum(StockAlmacen.stock), 0)
-    ).scalar()
-
+def kardex_list():
     return render_template(
-        "kardex/index.html",
-        productos=productos,
-        almacenes=almacenes,
-        movimientos=movimientos,
-        total_productos=total_productos,
-        total_stock=total_stock
+        "kardex.html",
+        lista=Kardex.query.order_by(Kardex.fecha.desc()).all(),
+        vehiculos=Vehiculo.query.all(),
+        tanques=Tanque.query.all(),
+        operadores=Operador.query.all()
     )
 
-@app.route("/kardex/reset", methods=["POST"])
+@app.route("/kardex/nuevo", methods=["POST"])
 @login_required
-@permission_required("kardex", "resetear")
-def kardex_reset_masivo():
+@permission_required("kardex", "crear")
+def kardex_nuevo():
 
-    stocks = StockAlmacen.query.all()
+    try:
+        tipo = request.form.get("tipo")
+        tanque_id = request.form.get("tanque_id")
+        vehiculo_id = request.form.get("vehiculo_id")
+        operador_id = request.form.get("operador_id")
+        tanque_lleno = request.form.get("tanque_lleno") == "on"
 
-    for s in stocks:
-        anterior = s.stock
-        s.stock = 0
+        cantidad = request.form.get("cantidad")
+        h_final = request.form.get("horometro_final")
 
-        movimiento = KardexMovimiento(
-            producto_id=s.producto_id,
-            almacen_id=s.almacen_id,
-            tipo_movimiento="RESET",
-            cantidad=anterior,
-            stock_anterior=anterior,
-            stock_nuevo=0,
-            costo_unitario=s.producto.precio_compra or 0,
-            usuario_id=current_user.id,
-            observacion="Reset masivo stock"
-        )
-        db.session.add(movimiento)
+        hace_5_seg = now_utc() - timedelta(seconds=5)
 
-    db.session.commit()
-
-    flash("Stock reseteado correctamente", "success")
-    return redirect(url_for("kardex_index"))
-
-@app.route("/kardex/igualar", methods=["POST"])
-@login_required
-@permission_required("kardex", "ajustar")
-def kardex_igualar_stock():
-
-    almacen_id = request.form.get("almacen_id")
-    categoria_id = request.form.get("categoria_id")
-    nuevo_stock = float(request.form.get("nuevo_stock"))
-
-    productos = Producto.query.filter_by(
-        categoria_id=categoria_id,
-        activo=True
-    ).all()
-
-    for p in productos:
-
-        stock = StockAlmacen.query.filter_by(
-            producto_id=p.id,
-            almacen_id=almacen_id
+        existe = Kardex.query.filter(
+            Kardex.vehiculo_id == vehiculo_id,
+            Kardex.cantidad == cantidad,
+            Kardex.fecha >= hace_5_seg
         ).first()
 
-        if stock:
-            anterior = stock.stock
-            stock.stock = nuevo_stock
-        else:
-            anterior = 0
-            stock = StockAlmacen(
-                producto_id=p.id,
-                almacen_id=almacen_id,
-                stock=nuevo_stock
-            )
-            db.session.add(stock)
+        if existe:
+            flash("Movimiento duplicado detectado", "warning")
+            return redirect(url_for("kardex_list"))
 
-        movimiento = KardexMovimiento(
-            producto_id=p.id,
-            almacen_id=almacen_id,
-            tipo_movimiento="AJUSTE_MASIVO",
-            cantidad=nuevo_stock,
-            stock_anterior=anterior,
-            stock_nuevo=nuevo_stock,
-            costo_unitario=p.precio_compra or 0,
+        # =========================
+        # PARSEO SEGURO
+        # =========================
+        try:
+            cantidad = float(cantidad) if cantidad else 0
+        except:
+            flash("Cantidad inválida", "danger")
+            return redirect(url_for("kardex_list"))
+
+        try:
+            h_final = float(h_final) if h_final else None
+        except:
+            flash("Horómetro inválido", "danger")
+            return redirect(url_for("kardex_list"))
+
+        parte = request.form.get("parte_diario")
+        obs = request.form.get("observacion")
+
+        if tipo not in ["ENTRADA", "SALIDA", "OPERACION"]:
+            flash("Tipo inválido", "danger")
+            return redirect(url_for("kardex_list"))
+
+        tanque = Tanque.query.get(int(tanque_id)) if tanque_id else None
+
+        # =========================
+        # VALIDACIÓN SALIDA
+        # =========================
+        if tipo == "SALIDA":
+
+            if not tanque:
+                flash("Debe seleccionar un tanque", "danger")
+                return redirect(url_for("kardex_list"))
+
+            if not vehiculo_id:
+                flash("Debe seleccionar un vehículo", "danger")
+                return redirect(url_for("kardex_list"))
+
+            if cantidad <= 0:
+                flash("Cantidad debe ser mayor a 0", "danger")
+                return redirect(url_for("kardex_list"))
+
+            if tanque.stock_actual < cantidad:
+                flash(f"Stock insuficiente ({tanque.stock_actual})", "danger")
+                return redirect(url_for("kardex_list"))
+
+        # =========================
+        # 🔥 ÚLTIMO HORÓMETRO REAL
+        # =========================
+        h_inicial = 0
+        if vehiculo_id:
+            vehiculo_id = int(vehiculo_id)
+
+            ultimo = Kardex.query.filter(
+                Kardex.vehiculo_id == vehiculo_id,
+                Kardex.horometro_final != None
+            ).order_by(Kardex.fecha.desc()).first()
+
+            if ultimo:
+                h_inicial = float(ultimo.horometro_final)
+
+        # =========================
+        # ⚠️ NORMALIZAR HORÓMETRO
+        # =========================
+        if tipo == "SALIDA":
+
+            if h_final is None:
+                # 🔥 CASO CLAVE: NO INGRESA HORÓMETRO
+                h_final = h_inicial
+
+            if h_final < h_inicial:
+                flash("Horómetro final no puede ser menor", "danger")
+                return redirect(url_for("kardex_list"))
+
+        # =========================
+        # RECORRIDO
+        # =========================
+        recorrido = h_final - h_inicial if h_final is not None else 0
+
+        # =========================
+        # CREAR MOVIMIENTO
+        # =========================
+        nuevo = Kardex(
+            tipo=tipo,
+            tanque_id=int(tanque_id) if tanque_id else None,
+            vehiculo_id=vehiculo_id,
             usuario_id=current_user.id,
-            observacion="Igualación masiva stock"
+            cantidad=cantidad,
+            horometro_inicial=h_inicial,
+            horometro_final=h_final,
+            tanque_lleno=tanque_lleno,
+            parte_diario=parte,
+            observacion=obs,
+            operador_id=int(operador_id) if operador_id else None
         )
-        db.session.add(movimiento)
 
-    db.session.commit()
+        db.session.add(nuevo)
+        db.session.flush()  # 🔥 IMPORTANTE
 
-    flash("Stock igualado correctamente", "success")
-    return redirect(url_for("kardex_index"))
+        # =========================
+        # STOCK
+        # =========================
+        if tipo == "ENTRADA":
+            tanque.stock_actual += cantidad
 
-@app.route("/kardex/ajuste", methods=["POST"])
+        elif tipo == "SALIDA":
+            tanque.stock_actual -= cantidad
+
+        # =========================
+        # 🚀 CONTROL TANQUE LLENO
+        # =========================
+        if tipo == "SALIDA" and tanque_lleno and vehiculo_id:
+
+            anterior = Kardex.query.filter(
+                Kardex.vehiculo_id == vehiculo_id,
+                Kardex.tanque_lleno == True,
+                Kardex.id != nuevo.id
+            ).order_by(Kardex.fecha.desc()).first()
+
+            if anterior:
+
+                h_ini = anterior.horometro_final or 0
+                h_fin = h_final or 0
+
+                recorrido_total = h_fin - h_ini
+
+                consumo_total = db.session.query(func.sum(Kardex.cantidad)).filter(
+                    Kardex.vehiculo_id == vehiculo_id,
+                    Kardex.tipo == "SALIDA",
+                    Kardex.fecha > anterior.fecha,
+                    Kardex.fecha <= nuevo.fecha
+                ).scalar() or 0
+
+                if consumo_total > 0 and recorrido_total > 0:
+                    
+                    rendimiento = consumo_total / recorrido_total
+
+                    vehiculo = Vehiculo.query.get(vehiculo_id)
+                    estado = "NORMAL"
+
+                    if vehiculo and vehiculo.rendimiento_promedio:
+                        prom = vehiculo.rendimiento_promedio
+
+                        if rendimiento > prom * 1.2:
+                            estado = "BAJO"   # 🔴 consume mucho (malo)
+                        elif rendimiento < prom * 0.8:
+                            estado = "ALTO"   # 🟢 consume poco (bueno)
+
+                        if estado == "BAJO":
+                            alerta = Alerta(
+                                tipo="RENDIMIENTO_BAJO",
+                                mensaje=f"Vehículo {vehiculo_id} bajo rendimiento",
+                                vehiculo_id=vehiculo_id
+                            )
+                            db.session.add(alerta)
+
+                    nuevo_rend = Rendimiento(
+                        vehiculo_id=vehiculo_id,
+                        consumo_total=consumo_total,
+                        recorrido_total=recorrido_total,
+                        rendimiento_calculado=rendimiento,
+                        estado=estado,
+                        tipo_control="TANQUE_LLENO",
+                        observacion="Control tanque lleno",
+                        horometro_abastecimiento_inicial=h_ini,
+                        horometro_abastecimiento_final=h_fin
+                    )
+
+                    db.session.add(nuevo_rend)
+
+                    
+
+        db.session.commit()
+
+        flash("✅ Movimiento registrado", "success")
+
+    except Exception as e:
+        db.session.rollback()
+        flash(f"Error: {str(e)}", "danger")
+
+    return redirect(url_for("kardex_list"))
+
+@app.route("/kardex/ultimo_horometro/<int:vehiculo_id>")
 @login_required
-@permission_required("kardex", "ajustar")
-def kardex_ajuste_individual():
+def ultimo_horometro(vehiculo_id):
 
-    producto_id = request.form.get("producto_id")
-    almacen_id = request.form.get("almacen_id")
-    nuevo_stock = float(request.form.get("nuevo_stock"))
-    observacion = request.form.get("observacion")
+    ultimo = Kardex.query.filter_by(vehiculo_id=vehiculo_id)\
+        .order_by(Kardex.fecha.desc()).first()
 
-    stock = StockAlmacen.query.filter_by(
-        producto_id=producto_id,
-        almacen_id=almacen_id
-    ).first()
+    return {
+        "horometro_final": ultimo.horometro_final if ultimo else 0
+    }
 
-    if not stock:
-        stock = StockAlmacen(
-            producto_id=producto_id,
-            almacen_id=almacen_id,
-            stock=0
-        )
-        db.session.add(stock)
-
-    anterior = stock.stock
-    stock.stock = nuevo_stock
-
-    producto = Producto.query.get(producto_id)
-
-    movimiento = KardexMovimiento(
-        producto_id=producto_id,
-        almacen_id=almacen_id,
-        tipo_movimiento="AJUSTE",
-        cantidad=nuevo_stock,
-        stock_anterior=anterior,
-        stock_nuevo=nuevo_stock,
-        costo_unitario=producto.precio_compra or 0,
-        usuario_id=current_user.id,
-        observacion=observacion
-    )
-
-    db.session.add(movimiento)
-    db.session.commit()
-
-    flash("Ajuste realizado correctamente", "success")
-    return redirect(url_for("kardex_index"))
-
-@app.route("/kardex/transferencia", methods=["POST"])
+# =========================
+# RENDIMIENTOS DASH
+# =========================
+@app.route("/rendimientos")
 @login_required
-@permission_required("kardex", "editar")
-def kardex_transferencia():
+@permission_required("rendimientos", "ver")
+def rendimiento_list():
 
-    producto_id = int(request.form.get("producto_id"))
-    origen_id = int(request.form.get("origen_id"))
-    destino_id = int(request.form.get("destino_id"))
-    cantidad = float(request.form.get("cantidad"))
-    observacion = request.form.get("observacion")
+    from sqlalchemy import func
 
-    origen = StockAlmacen.query.filter_by(
-        producto_id=producto_id,
-        almacen_id=origen_id
-    ).first()
+    # =========================
+    # KPIs GENERALES
+    # =========================
+    total = db.session.query(func.count(Rendimiento.id)).scalar() or 0
 
-    if not origen or origen.stock < cantidad:
-        flash("Stock insuficiente en almacén origen", "danger")
-        return redirect(url_for("kardex_index"))
+    promedio = db.session.query(
+        func.avg(Rendimiento.rendimiento_calculado)
+    ).scalar() or 0
 
-    destino = StockAlmacen.query.filter_by(
-        producto_id=producto_id,
-        almacen_id=destino_id
-    ).first()
+    total_consumo = db.session.query(
+        func.sum(Rendimiento.consumo_total)
+    ).scalar() or 0
 
-    if not destino:
-        destino = StockAlmacen(
-            producto_id=producto_id,
-            almacen_id=destino_id,
-            stock=0
-        )
-        db.session.add(destino)
+    total_recorrido = db.session.query(
+        func.sum(Rendimiento.recorrido_total)
+    ).scalar() or 0
 
-    producto = Producto.query.get(producto_id)
-    costo = producto.precio_compra or 0
+    bajos = db.session.query(func.count(Rendimiento.id))\
+        .filter(Rendimiento.estado == "BAJO").scalar() or 0
 
-    transferencia = TransferenciaAlmacen(
-        almacen_origen_id=origen_id,
-        almacen_destino_id=destino_id,
-        usuario_id=current_user.id,
-        observacion=observacion
-    )
-    db.session.add(transferencia)
-    db.session.flush()
+    porcentaje_bajo = (bajos / total * 100) if total > 0 else 0
 
-    detalle = TransferenciaDetalle(
-        transferencia_id=transferencia.id,
-        producto_id=producto_id,
-        cantidad=cantidad,
-        costo_unitario=costo
-    )
-    db.session.add(detalle)
+    ultimo = Rendimiento.query.order_by(Rendimiento.fecha.desc()).first()
 
-    # salida origen
-    stock_anterior_origen = origen.stock
-    origen.stock -= cantidad
+    tanque_lleno = db.session.query(func.count(Rendimiento.id))\
+        .filter(Rendimiento.tipo_control == "TANQUE_LLENO").scalar()
 
-    # entrada destino
-    stock_anterior_destino = destino.stock
-    destino.stock += cantidad
+    # =========================
+    # AGRUPACIÓN POR VEHÍCULO
+    # =========================
+    por_vehiculo = db.session.query(
+        Vehiculo.nombre,
+        func.avg(Rendimiento.rendimiento_calculado),
+        func.count(Rendimiento.id)
+    ).join(Vehiculo)\
+     .group_by(Vehiculo.nombre).all()
 
-    mov1 = KardexMovimiento(
-        producto_id=producto_id,
-        almacen_id=origen_id,
-        tipo_movimiento="TRANSFERENCIA_SALIDA",
-        cantidad=cantidad,
-        stock_anterior=stock_anterior_origen,
-        stock_nuevo=origen.stock,
-        costo_unitario=costo,
-        usuario_id=current_user.id,
-        observacion=observacion
-    )
-
-    mov2 = KardexMovimiento(
-        producto_id=producto_id,
-        almacen_id=destino_id,
-        tipo_movimiento="TRANSFERENCIA_ENTRADA",
-        cantidad=cantidad,
-        stock_anterior=stock_anterior_destino,
-        stock_nuevo=destino.stock,
-        costo_unitario=costo,
-        usuario_id=current_user.id,
-        observacion=observacion
-    )
-
-    db.session.add(mov1)
-    db.session.add(mov2)
-
-    db.session.commit()
-
-    flash("Transferencia realizada correctamente", "success")
-    return redirect(url_for("kardex_index"))
-
-
-@app.route("/api/kardex/producto/<codigo>")
-@login_required
-@permission_required("kardex", "ver")
-def buscar_producto_codigo(codigo):
-
-    producto = Producto.query.filter_by(
-        codigo_barras=codigo,
-        activo=True
-    ).first()
-
-    if not producto:
-        return jsonify({"ok": False})
-
-    return jsonify({
-        "ok": True,
-        "id": producto.id,
-        "nombre": producto.nombre,
-        "precio_compra": producto.precio_compra
-    })
-
-@app.route("/kardex/movimientos")
-@login_required
-@permission_required("kardex", "ver")
-def kardex_movimientos():
-
-    movimientos = KardexMovimiento.query.order_by(
-        KardexMovimiento.fecha.desc()
-    ).all()
+    # =========================
+    # AGRUPACIÓN POR PROYECTO
+    # =========================
+    por_proyecto = db.session.query(
+        Proyecto.nombre,
+        func.avg(Rendimiento.rendimiento_calculado)
+    ).join(Vehiculo, Vehiculo.proyecto_id == Proyecto.id)\
+     .join(Rendimiento, Rendimiento.vehiculo_id == Vehiculo.id)\
+     .group_by(Proyecto.nombre).all()
 
     return render_template(
-        "kardex/movimientos.html",
-        movimientos=movimientos
+        "rendimientos.html",
+        lista=Rendimiento.query.order_by(Rendimiento.fecha.desc()).all(),
+
+        promedio=round(promedio, 2),
+        total_consumo=round(total_consumo, 2),
+        total_recorrido=round(total_recorrido, 2),
+        porcentaje_bajo=round(porcentaje_bajo, 1),
+        ultimo=ultimo.rendimiento_calculado if ultimo else 0,
+        tanque_lleno=tanque_lleno,
+
+        por_vehiculo=por_vehiculo,
+        por_proyecto=por_proyecto
     )
 
 
+
+@app.route("/rendimientos/calcular/<int:vehiculo_id>", methods=["POST"])
+@login_required
+@permission_required("rendimientos", "crear")
+def calcular_rendimiento(vehiculo_id):
+
+    try:
+        registros = Kardex.query.filter_by(
+            vehiculo_id=vehiculo_id,
+            tipo="SALIDA"
+        ).order_by(Kardex.fecha.desc()).limit(2).all()
+
+        if len(registros) < 2:
+            flash("No hay suficientes datos", "warning")
+            return redirect(url_for("rendimiento_list"))
+
+        actual, anterior = registros
+
+        recorrido = (actual.horometro_final or 0) - (anterior.horometro_final or 0)
+        consumo = actual.cantidad
+
+        if consumo == 0:
+            flash("Consumo inválido", "danger")
+            return redirect(url_for("rendimiento_list"))
+
+        rendimiento = recorrido / consumo
+
+        vehiculo = Vehiculo.query.get(vehiculo_id)
+
+        if rendimiento < vehiculo.rendimiento_promedio * 0.8:
+            estado = "BAJO"
+        elif rendimiento > vehiculo.rendimiento_promedio * 1.2:
+            estado = "ALTO"
+        else:
+            estado = "NORMAL"
+
+        nuevo = Rendimiento(
+            vehiculo_id=vehiculo_id,
+            consumo=consumo,
+            recorrido=recorrido,
+            rendimiento_calculado=rendimiento,
+            estado=estado
+        )
+
+        db.session.add(nuevo)
+        db.session.commit()
+
+        flash(f"✅ Rendimiento calculado ({estado})", "success")
+
+    except Exception as e:
+        db.session.rollback()
+        flash(f"Error: {str(e)}", "danger")
+
+    return redirect(url_for("rendimiento_list"))
+
+
+@app.route("/cargas", methods=["POST"])
+@permission_required("registrar","crear")
+def registrar_carga():
+    data = request.json
+
+    nueva = Kardex(
+        tipo="SALIDA",
+        fecha=datetime.utcnow(),
+        cantidad=data["cantidad"],
+        tanque_id=data["tanque_id"],
+        vehiculo_id=data["vehiculo_id"],
+        usuario_id=current_user.id,
+        horometro=data.get("horometro"),
+        kilometraje=data.get("kilometraje")
+    )
+
+    db.session.add(nueva)
+
+    # actualizar stock
+    tanque = Tanque.query.get(data["tanque_id"])
+    tanque.stock_actual -= data["cantidad"]
+
+    db.session.commit()
+
+    return {"msg": "Carga registrada"}
+
+
+
+#====================================================================================
+# Reportes
+# ===================================================================================
+
+@app.route("/reportes/rendimiento")
+@login_required
+@permission_required("rendimientos", "ver")
+def reporte_rendimiento():
+
+    vehiculos = Vehiculo.query.all()
+
+    return render_template(
+        "reporte_rendimientos.html",
+        vehiculos=vehiculos
+    )
+
+@app.route("/reportes/rendimientos/excel")
+@login_required
+@permission_required("rendimientos", "ver")
+def reporte_rendimientos_excel():
+
+    tipo = request.args.get("tipo")  # semanal, mensual, anual
+    fecha_str = request.args.get("fecha")
+
+    fecha_base = datetime.strptime(fecha_str, "%Y-%m-%d")
+
+    # =========================
+    # RANGO DE FECHAS
+    # =========================
+    if tipo == "semanal":
+        inicio = fecha_base - timedelta(days=fecha_base.weekday())
+        fin = inicio + timedelta(days=6)
+
+    elif tipo == "mensual":
+        inicio = fecha_base.replace(day=1)
+        if fecha_base.month == 12:
+            fin = fecha_base.replace(year=fecha_base.year+1, month=1, day=1) - timedelta(days=1)
+        else:
+            fin = fecha_base.replace(month=fecha_base.month+1, day=1) - timedelta(days=1)
+
+    elif tipo == "anual":
+        inicio = fecha_base.replace(month=1, day=1)
+        fin = fecha_base.replace(month=12, day=31)
+
+    else:
+        return "Tipo inválido", 400
+
+    # =========================
+    # DATA BASE
+    # =========================
+    vehiculos = Vehiculo.query.filter_by(activo=True).all()
+
+    dias = []
+    current = inicio
+    while current <= fin:
+        dias.append(current)
+        current += timedelta(days=1)
+
+    # =========================
+    # CREAR EXCEL
+    # =========================
+    wb = Workbook()
+    ws = wb.active
+    ws.title = "Reporte"
+
+    # HEADER
+    ws["A1"] = "REPORTE DE CONSUMO DE COMBUSTIBLE"
+    ws["A2"] = f"Periodo: {inicio.date()} - {fin.date()}"
+
+    # ENCABEZADOS
+    ws.cell(row=4, column=1, value="ITEM")
+    ws.cell(row=4, column=2, value="EQUIPO")
+
+    col = 3
+    for d in dias:
+        ws.cell(row=4, column=col, value=d.strftime("%d-%b"))
+        col += 1
+
+    ws.cell(row=4, column=col, value="TOTAL")
+
+    # =========================
+    # DATA POR VEHICULO
+    # =========================
+    row = 5
+
+    for i, v in enumerate(vehiculos, start=1):
+
+        ws.cell(row=row, column=1, value=i)
+        ws.cell(row=row, column=2, value=v.nombre)
+
+        total = 0
+        col = 3
+
+        for d in dias:
+
+            consumo = db.session.query(func.sum(Kardex.cantidad)).filter(
+                Kardex.vehiculo_id == v.id,
+                Kardex.tipo == "SALIDA",
+                func.date(Kardex.fecha) == d.date()
+            ).scalar() or 0
+
+            ws.cell(row=row, column=col, value=round(consumo, 2))
+            total += consumo
+            col += 1
+
+        ws.cell(row=row, column=col, value=round(total, 2))
+
+        row += 1
+
+
+    fill_yellow = PatternFill(start_color="FFFF00", end_color="FFFF00", fill_type="solid")
+
+    ws.cell(row=4, column=col).fill = fill_yellow
+    
+    #Congelar encabezado
+    ws.freeze_panes = "C5"
+
+
+    for col in ws.columns:
+        max_length = 0
+        col_letter = col[0].column_letter
+        for cell in col:
+            if cell.value:
+                max_length = max(max_length, len(str(cell.value)))
+        ws.column_dimensions[col_letter].width = max_length + 2
+
+    vehiculos = Vehiculo.query.filter_by(
+        proyecto_id=current_user.proyecto_id
+    ).all()
+
+    # =========================
+    # EXPORTAR
+    # =========================
+    output = io.BytesIO()
+    wb.save(output)
+    output.seek(0)
+
+    return send_file(
+        output,
+        as_attachment=True,
+        download_name=f"reporte_{tipo}.xlsx",
+        mimetype="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+    )
+
 #==================================================================
-# DASHBOARD - Productos - Ventas
+# DASHBOARD - 
 #==================================================================
 @app.route("/dashboard")
 @login_required
 def dashboard():
 
-    from sqlalchemy import func
-
-    # =========================
-    # 💰 VENTAS TOTALES
-    # =========================
-    total_ventas = round(db.session.query(func.sum(Venta.total)).scalar() or 0, 2)
-
-    # =========================
-    # 📦 PRODUCTOS MÁS VENDIDOS
-    # =========================
-    top_productos = db.session.query(
-        Producto.nombre,
-        func.sum(DetalleVenta.cantidad).label("total")
-    ).join(DetalleVenta, Producto.id == DetalleVenta.producto_id)\
-     .group_by(Producto.nombre)\
-     .order_by(func.sum(DetalleVenta.cantidad).desc())\
-     .limit(5).all()
-
-    # =========================
-    # ⚠️ STOCK BAJO
-    # =========================
-    bajo_stock = Producto.query.filter(Producto.stock < 5).all()
-
-    # =========================
-    # 🌟 PRODUCTO ESTRELLA
-    # =========================
-    producto_estrella = db.session.query(
-        Producto.nombre,
-        func.sum(DetalleVenta.subtotal).label("total")
-    ).join(DetalleVenta)\
-     .group_by(Producto.nombre)\
-     .order_by(func.sum(DetalleVenta.subtotal).desc())\
-     .first()
-
-    # =========================
-    # 👤 MEJOR CLIENTE
-    # =========================
-    mejor_cliente = db.session.query(
-        Cliente.nombre,
-        func.sum(Venta.total).label("total")
-    ).join(Venta)\
-     .group_by(Cliente.nombre)\
-     .order_by(func.sum(Venta.total).desc())\
-     .first()
-
-    # =========================
-    # 📈 VENTAS POR DÍA
-    # =========================
-    ventas_dia = db.session.query(
-        func.date(Venta.fecha),
-        func.sum(Venta.total)
-    ).group_by(func.date(Venta.fecha)).all()
-
-    ventas_dia = [(fecha.strftime("%d/%m"), total) for fecha, total in ventas_dia]
-
     return render_template(
-        "dashboard.html",
-        total_ventas=total_ventas,
-        top_productos=top_productos,
-        bajo_stock=bajo_stock,
-        producto_estrella=producto_estrella,
-        mejor_cliente=mejor_cliente,
-        ventas_dia=ventas_dia
+        "dashboard.html"
     )
 
 
 
 if __name__ == "__main__":
-    app.run(host="127.0.0.1", port=5056, debug=True)
+    app.run(host="127.0.0.1", port=8007, debug=True)

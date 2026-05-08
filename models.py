@@ -10,7 +10,8 @@ from sqlalchemy.sql import func
 # Zona horaria Lima
 LIMA = pytz.timezone("America/Lima")
 
-
+def now_lima():
+    return datetime.now(LIMA)
 
 db = SQLAlchemy()
 
@@ -20,7 +21,7 @@ db = SQLAlchemy()
 # -------------------------
 user_roles = db.Table(
     'user_roles',
-    db.Column('user_id', db.Integer, db.ForeignKey('users.id')),
+    db.Column('user_id', db.Integer, db.ForeignKey('usuarios.id')),
     db.Column('role_id', db.Integer, db.ForeignKey('roles.id'))
 )
 
@@ -29,165 +30,22 @@ role_permissions = db.Table(
     db.Column('role_id', db.Integer, db.ForeignKey('roles.id')),
     db.Column('permission_id', db.Integer, db.ForeignKey('permissions.id'))
 )
-
-# =========================
-# CATEGORIA
-# =========================
-
-class Categoria(db.Model):
-    __tablename__ = 'categorias'
-
-    id = db.Column(db.Integer, primary_key=True)
-    nombre = db.Column(db.String(100))
-
-    parent_id = db.Column(db.Integer, db.ForeignKey('categorias.id'), nullable=True)
-
-    parent = db.relationship('Categoria', remote_side=[id], backref='hijos')
-
-
-class UnidadMedida(db.Model):
-    __tablename__ = 'unidades_medida'
-
-    id = db.Column(db.Integer, primary_key=True)
-    nombre = db.Column(db.String(50))  # unidad, kg, caja, etc.
-
-
-class Proveedor(db.Model):
-    __tablename__ = 'proveedores'
-
-    id = db.Column(db.Integer, primary_key=True)
-    nombre = db.Column(db.String(150))
-    telefono = db.Column(db.String(50))
-    direccion = db.Column(db.String(200))
-
-
-class Producto(db.Model):
-    __tablename__ = 'productos'
-
-    id = db.Column(db.Integer, primary_key=True)
-    nombre = db.Column(db.String(150))
-    codigo_barras = db.Column(db.String(100), unique=True, index=True)
-
-    categoria_id = db.Column(db.Integer, db.ForeignKey('categorias.id'))
-    unidad_id = db.Column(db.Integer, db.ForeignKey('unidades_medida.id'))
-
-    precio_compra = db.Column(db.Float)
-    precio_venta = db.Column(db.Float)
-    stock = db.Column(db.Float, default=0)
-
-    categoria = db.relationship("Categoria")
-    unidad = db.relationship("UnidadMedida")
-    imagen = db.Column(db.String(200))  # nombre archivo
-    activo = db.Column(db.Boolean, default=True)
-
-
-# =========================
-# CLIENTES
-# =========================
-
-class Cliente(db.Model):
-    __tablename__ = 'clientes'
-
-    id = db.Column(db.Integer, primary_key=True)
-    nombre = db.Column(db.String(150))
-    documento = db.Column(db.String(20))  # DNI/RUC
-    telefono = db.Column(db.String(50))
-    direccion = db.Column(db.String(200))
-
-
-# =========================
-# VENTAS
-# =========================
-
-class Venta(db.Model):
-    __tablename__ = 'ventas'
-
-    id = db.Column(db.Integer, primary_key=True)
-    fecha = db.Column(
-        db.DateTime(timezone=True),
-        default=lambda: datetime.now(LIMA)
-    )
-    
-
-    cliente_id = db.Column(db.Integer, db.ForeignKey('clientes.id'))
-    usuario_id = db.Column(db.Integer, db.ForeignKey('users.id'))
-    tipo_comprobante = db.Column(db.String(20))  # 🔥 NUEVO
-
-    total = db.Column(db.Float)
-
-    cliente = db.relationship("Cliente")
-    usuario = db.relationship("User")
-
-    almacen_id = db.Column(db.Integer, db.ForeignKey('almacenes.id'))
-    almacen = db.relationship("Almacen")
-
-
-class DetalleVenta(db.Model):
-    __tablename__ = 'detalle_ventas'
-
-    id = db.Column(db.Integer, primary_key=True)
-
-    venta_id = db.Column(db.Integer, db.ForeignKey('ventas.id'))
-    producto_id = db.Column(db.Integer, db.ForeignKey('productos.id'))
-
-    cantidad = db.Column(db.Float)
-    precio = db.Column(db.Float)
-    subtotal = db.Column(db.Float)
-
-    producto = db.relationship("Producto")
-
-
-# =========================
-# COMPRAS
-# =========================
-
-class Compra(db.Model):
-    __tablename__ = "compras"
-
-    id = db.Column(db.Integer, primary_key=True)
-    proveedor_id = db.Column(db.Integer, db.ForeignKey("proveedores.id"))
-    almacen_id = db.Column(db.Integer, db.ForeignKey("almacenes.id"))
-    usuario_id = db.Column(db.Integer, db.ForeignKey("users.id"), nullable=False)
-
-    total = db.Column(db.Numeric(12,2))
-    fecha = db.Column(
-        db.DateTime(timezone=True),
-        default=lambda: datetime.now(LIMA)
-    )
-
-    proveedor = db.relationship("Proveedor")
-    almacen = db.relationship("Almacen")
-    usuario = db.relationship("User")
-
-class DetalleCompra(db.Model):
-    __tablename__ = 'detalle_compras'
-
-    id = db.Column(db.Integer, primary_key=True)
-
-    compra_id = db.Column(db.Integer, db.ForeignKey('compras.id'))
-    producto_id = db.Column(db.Integer, db.ForeignKey('productos.id'))
-
-    cantidad = db.Column(db.Float)
-    precio = db.Column(db.Float)
-    subtotal = db.Column(db.Float)
-
-    producto = db.relationship("Producto")
-
-
 # -------------------------
-# USER
+# USUARIOS
 # -------------------------
-class User(db.Model, UserMixin):
-    __tablename__ = 'users'
+class Usuario(db.Model, UserMixin):
+    __tablename__ = 'usuarios'
 
     id = db.Column(db.Integer, primary_key=True)
     username = db.Column(db.String(80), unique=True)
     email = db.Column(db.String(120), unique=True)
     password_hash = db.Column(db.String(200))
     full_name = db.Column(db.String(200))
-    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    created_at = db.Column(db.DateTime, default=now_lima)
 
-    roles = db.relationship('Role', secondary=user_roles, backref='users')
+    roles = db.relationship('Role', secondary=user_roles, backref='usuarios')
+    proyecto_id = db.Column(db.Integer, db.ForeignKey("proyectos.id"), nullable=True)
+    proyectos = db.relationship("Proyecto", backref="usuarios")
 
     # 🔐 PASSWORD
     def set_password(self, password):
@@ -209,97 +67,6 @@ class User(db.Model, UserMixin):
                     return True
 
         return False
-
-#---------------------------------------------
-# ALMACEN
-# --------------------------------------------
-class Almacen(db.Model):
-    __tablename__ = 'almacenes'
-
-    id = db.Column(db.Integer, primary_key=True)
-    nombre = db.Column(db.String(150), nullable=False)
-    ubicacion = db.Column(db.String(200))
-    activo = db.Column(db.Boolean, default=True)
-
-class StockAlmacen(db.Model):
-    __tablename__ = 'stock_almacen'
-
-    id = db.Column(db.Integer, primary_key=True)
-
-    producto_id = db.Column(db.Integer, db.ForeignKey('productos.id'))
-    almacen_id = db.Column(db.Integer, db.ForeignKey('almacenes.id'))
-
-    stock = db.Column(db.Float, default=0)
-
-    producto = db.relationship("Producto")
-    almacen = db.relationship("Almacen")
-
-class KardexMovimiento(db.Model):
-    __tablename__ = 'kardex_movimientos'
-
-    id = db.Column(db.Integer, primary_key=True)
-    fecha = db.Column(
-        db.DateTime(timezone=True),
-        default=lambda: datetime.now(LIMA)
-    )
-
-    producto_id = db.Column(db.Integer, db.ForeignKey('productos.id'))
-    almacen_id = db.Column(db.Integer, db.ForeignKey('almacenes.id'))
-
-    tipo_movimiento = db.Column(db.String(30))
-    cantidad = db.Column(db.Float)
-
-    stock_anterior = db.Column(db.Float)
-    stock_nuevo = db.Column(db.Float)
-
-    costo_unitario = db.Column(db.Float, default=0)
-
-    usuario_id = db.Column(db.Integer, db.ForeignKey('users.id'))
-
-    observacion = db.Column(db.Text)
-
-    compra_id = db.Column(db.Integer, db.ForeignKey('compras.id'), nullable=True)
-    venta_id = db.Column(db.Integer, db.ForeignKey('ventas.id'), nullable=True)
-
-    producto = db.relationship("Producto")
-    almacen = db.relationship("Almacen")
-    usuario = db.relationship("User")
-
-class TransferenciaAlmacen(db.Model):
-    __tablename__ = 'transferencias_almacen'
-
-    id = db.Column(db.Integer, primary_key=True)
-    fecha = db.Column(
-        db.DateTime(timezone=True),
-        default=lambda: datetime.now(LIMA)
-    )
-
-    almacen_origen_id = db.Column(db.Integer, db.ForeignKey('almacenes.id'))
-    almacen_destino_id = db.Column(db.Integer, db.ForeignKey('almacenes.id'))
-
-    usuario_id = db.Column(db.Integer, db.ForeignKey('users.id'))
-    observacion = db.Column(db.Text)
-
-    origen = db.relationship("Almacen", foreign_keys=[almacen_origen_id])
-    destino = db.relationship("Almacen", foreign_keys=[almacen_destino_id])
-    usuario = db.relationship("User")
-
-class TransferenciaDetalle(db.Model):
-    __tablename__ = 'transferencia_detalles'
-
-    id = db.Column(db.Integer, primary_key=True)
-
-    transferencia_id = db.Column(db.Integer, db.ForeignKey('transferencias_almacen.id'))
-    producto_id = db.Column(db.Integer, db.ForeignKey('productos.id'))
-
-    cantidad = db.Column(db.Float)
-    costo_unitario = db.Column(db.Float)
-
-    transferencia = db.relationship("TransferenciaAlmacen")
-    producto = db.relationship("Producto")
-#---------------------------------------------
-# ALMACEN
-# --------------------------------------------
 
 
 class Role(db.Model):
@@ -328,3 +95,163 @@ class Module(db.Model):
 
     id = db.Column(db.Integer, primary_key=True)
     name = db.Column(db.String(50), unique=True)
+
+# =========================
+# PROYECTOS
+# =========================
+class Proyecto(db.Model):
+    __tablename__ = "proyectos"
+
+    id = db.Column(db.Integer, primary_key=True)
+    nombre = db.Column(db.String(120), nullable=False)
+    ubicacion = db.Column(db.Text)
+    nombre_corto=db.Column(db.Text)
+    activo = db.Column(db.Boolean, default=True)
+
+    vehiculos = db.relationship("Vehiculo", backref="proyecto", lazy=True)
+    tanques = db.relationship("Tanque", backref="proyecto", lazy=True)
+
+
+# =========================
+# VEHICULOS / MAQUINARIA
+# =========================
+class Vehiculo(db.Model):
+    __tablename__ = "vehiculos"
+
+    id = db.Column(db.Integer, primary_key=True)
+    nombre = db.Column(db.String(250), nullable=False)
+    placa = db.Column(db.String(20))
+    tipo = db.Column(db.String(50))  # CAMIONETA, EXCAVADORA, etc
+
+    rendimiento_promedio = db.Column(db.Float)  # km/gal o hr/gal
+    ultimo_horometro_abastecimiento = db.Column(db.Float)
+
+    activo = db.Column(db.Boolean, default=True)
+
+    proyecto_id = db.Column(db.Integer, db.ForeignKey("proyectos.id"))
+
+    kardex = db.relationship("Kardex", backref="vehiculo", lazy=True)
+    rendimientos = db.relationship("Rendimiento", backref="vehiculo", lazy=True)
+
+# =========================
+# OPERADORES
+# =========================
+class Operador(db.Model):
+    __tablename__ = "operadores"
+
+    id = db.Column(db.Integer, primary_key=True)
+
+    nombre = db.Column(db.String(150), nullable=False)
+
+    documento = db.Column(db.String(20))  # DNI opcional
+
+    activo = db.Column(db.Boolean, default=True)
+
+    proyecto_id = db.Column(db.Integer, db.ForeignKey("proyectos.id"))
+
+    proyecto = db.relationship("Proyecto", backref="operadores")
+
+
+# =========================
+# TANQUES
+# =========================
+class Tanque(db.Model):
+    __tablename__ = "tanques"
+
+    id = db.Column(db.Integer, primary_key=True)
+    nombre = db.Column(db.String(100), nullable=False)
+
+    capacidad = db.Column(db.Float, nullable=False)
+    stock_actual = db.Column(db.Float, default=0)
+    stock_minimo = db.Column(db.Float, default=0)
+
+    proyecto_id = db.Column(db.Integer, db.ForeignKey("proyectos.id"))
+
+    kardex = db.relationship("Kardex", backref="tanque", lazy=True)
+
+
+# =========================
+# KARDEX (MOVIMIENTOS)
+# =========================
+class Kardex(db.Model):
+    __tablename__ = "kardex"
+
+    id = db.Column(db.Integer, primary_key=True)
+
+    tipo = db.Column(db.String(20), nullable=False)  
+    # ENTRADA (tanque) / SALIDA (vehículo) / OPERACION (solo horómetro)
+
+    fecha = db.Column(db.DateTime, default=now_lima)
+
+    # relaciones
+    tanque_id = db.Column(db.Integer, db.ForeignKey("tanques.id"), nullable=True)
+    vehiculo_id = db.Column(db.Integer, db.ForeignKey("vehiculos.id"), nullable=True)
+    usuario_id = db.Column(db.Integer, db.ForeignKey("usuarios.id"))
+
+    # datos operativos
+    cantidad = db.Column(db.Float, default=0)  # combustible
+
+    horometro_inicial = db.Column(db.Float, nullable=True)
+    horometro_final = db.Column(db.Float, nullable=True)
+
+    kilometraje = db.Column(db.Float, nullable=True)
+
+    parte_diario = db.Column(db.String(20))  # 501, 502, etc
+
+    tanque_lleno = db.Column(db.Boolean, default=False)
+
+    observacion = db.Column(db.Text)
+
+    referencia = db.Column(db.Text)
+
+    creado_en = db.Column(db.DateTime, default=now_lima)
+
+    operador_id = db.Column(db.Integer, db.ForeignKey("operadores.id"), nullable=True)
+
+    operador = db.relationship("Operador")
+# =========================
+# RENDIMIENTO (AUDITORIA)
+# =========================
+class Rendimiento(db.Model):
+    __tablename__ = "rendimientos"
+
+    id = db.Column(db.Integer, primary_key=True)
+
+    vehiculo_id = db.Column(db.Integer, db.ForeignKey("vehiculos.id"))
+
+    fecha = db.Column(db.DateTime, default=now_lima)
+
+    horometro_abastecimiento_inicial = db.Column(db.Float)
+    horometro_abastecimiento_final = db.Column(db.Float)
+
+    consumo_total = db.Column(db.Float)
+    recorrido_total = db.Column(db.Float)
+
+    rendimiento_calculado = db.Column(db.Float)
+
+    estado = db.Column(db.String(20))  # NORMAL, ALTO, BAJO
+
+    tipo_control = db.Column(db.String(20))  # "PARCIAL" o "TANQUE_LLENO"
+
+    observacion = db.Column(db.Text)
+
+
+
+# =========================
+# ALERTAS (OPCIONAL PERO PRO)
+# =========================
+class Alerta(db.Model):
+    __tablename__ = "alertas"
+
+    id = db.Column(db.Integer, primary_key=True)
+
+    tipo = db.Column(db.String(50))  # STOCK_CRITICO, RENDIMIENTO_BAJO
+    mensaje = db.Column(db.Text)
+
+    fecha = db.Column(db.DateTime, default=now_lima)
+
+    leido = db.Column(db.Boolean, default=False)
+
+    proyecto_id = db.Column(db.Integer, db.ForeignKey("proyectos.id"), nullable=True)
+    tanque_id = db.Column(db.Integer, db.ForeignKey("tanques.id"), nullable=True)
+    vehiculo_id = db.Column(db.Integer, db.ForeignKey("vehiculos.id"), nullable=True)

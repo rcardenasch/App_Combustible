@@ -6,24 +6,29 @@
 ========================================================== */
 :root {
 
-    /* Light Mode */
-    --bg-body: #f1f5f9;
+    /* 🔷 BASE */
+    --bg-body: #f4f6f8;
     --bg-card: #ffffff;
-    --bg-sidebar: #05478a;
     --bg-navbar: #ffffff;
 
-    --text-main: #4f5153;
+    /* 🟧 INDUSTRIAL (clave) */
+    --primary: #f97316;        /* naranja maquinaria */
+    --primary-dark: #c2410c;
+
+    /* 🔵 CORPORATIVO */
+    --bg-sidebar: #0f172a;     /* azul oscuro serio */
+    --text-sidebar: #e5e7eb;
+
+    /* ⚫ TEXTO */
+    --text-main: #1e293b;
     --text-muted: #64748b;
 
-    --border-color: #040405;
+    --border-color: #e5e7eb;
 
-    --primary: #2563eb;
-    --primary-dark: #1e40af;
-
+    /* SEMÁFORO */
     --success: #16a34a;
     --danger: #dc2626;
     --warning: #f59e0b;
-    --text-sidebar: #ffffff;
 }
 
 /* ==========================================================
@@ -31,19 +36,20 @@
 ========================================================== */
 body.dark-mode {
 
-    --bg-body: #0f172a;
-    --bg-card: #1e293b;
-    --bg-sidebar: #0b1220;
-    --bg-navbar: #1e293b;
+    --bg-body: #020617;
+    --bg-card: #0f172a;
+    --bg-navbar: #020617;
 
-    --text-main: #f1f5f9;
-    --text-muted: #5a5e63;
-    --text-sidebar: #f1f5f9;
+    --bg-sidebar: #000000;
 
-    --border-color: #334155;
+    --text-main: #e5e7eb;
+    --text-muted: #94a3b8;
 
-    --primary: #3b82f6;
-    --primary-dark: #2563eb;
+    --border-color: #1e293b;
+
+    /* 🔥 naranja resalta más en dark */
+    --primary: #f97316;
+    --primary-dark: #ea580c;
 }
 body {
     font-family: 'Inter', system-ui, -apple-system;
@@ -60,12 +66,14 @@ body.dark-mode .sidebar a:hover {
 ========================================================== */
 
 .sidebar {
+    
     width: 260px;
     height: 100vh;
     position: fixed;
     top: 0;
     left: 0;
-    background: var(--bg-sidebar);
+    background: linear-gradient(180deg, #020617, #0f172a);
+    border-right: 1px solid rgba(255,255,255,0.05);
     color: var(--text-sidebar);
     padding-top: 20px;
     transition: all 0.3s ease;
@@ -85,7 +93,7 @@ body.dark-mode .sidebar a:hover {
 }
 
 .sidebar a:hover {
-    background: rgba(255,255,255,0.08);
+    background: rgba(249,115,22,0.15);
 }
 
 
@@ -315,13 +323,11 @@ body.dark-mode .table thead {
 }
 
 .btn-primary {
-    background: var(--primary);
+    background: linear-gradient(135deg, #f97316, #c2410c);
     border: none;
 }
-
 .btn-primary:hover {
-    background: var(--primary-dark);
-    transform: translateY(-1px);
+    box-shadow: 0 10px 25px rgba(249,115,22,.4);
 }
 
 .btn-danger {
@@ -336,21 +342,56 @@ body.dark-mode .table thead {
 /* ----------------------------------------------------------
 POPUP / MODAL PROFESIONAL
 ----------------------------------------------------------- */
+/* ---------------------------------------------------------- 
+   POPUP / MODAL PROFESIONAL OPTIMIZADO 
+----------------------------------------------------------- */ 
+
 .modal-content {
     background: var(--bg-card);
     color: var(--text-main);
     border-radius: 18px;
     border: none;
     box-shadow: 0 30px 60px rgba(0,0,0,.3);
+    overflow: hidden; /* Asegura que el header respete el border-radius */
 }
 
 .modal-header {
     border-bottom: 1px solid var(--border);
+    background: var(--bg-card);
+    color: var(--text-main);
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 1.5rem; /* Espaciado interno más profesional */
 }
 
 .modal-title {
-    font-weight: 600;
+    font-weight: 700; /* Un poco más de peso visual */
+    font-size: 1.25rem;
+    margin: 0;
 }
+
+/* Mejora específica para el botón de cierre (X) */
+.btn-close {
+    background-color: var(--text-main); /* Forzamos el color según tu variable */
+    opacity: 0.7;
+    transition: opacity 0.2s ease;
+    filter: invert(var(--dark-mode, 0)); /* Si usas modo oscuro, esto invierte la X a blanco */
+}
+
+.btn-close:hover {
+    opacity: 1;
+}
+
+/* Si usas la clase .close antigua de Bootstrap */
+.modal-header .close {
+    color: var(--text-main);
+    text-shadow: none;
+    opacity: 0.8;
+    font-size: 1.5rem;
+}
+
+
 
 /* ----------------------------------------------------------
    ANIMACION
@@ -397,12 +438,18 @@ POPUP / MODAL PROFESIONAL
 ----------------------------------------------------------- */
 
 .login-wrapper {
-    min-height: 100vh;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    background: linear-gradient(135deg, #1e40af, #2563eb, #38bdf8);
-    padding: 20px;
+    background: linear-gradient(135deg, #020617, #0f172a, #1e293b);
+    position: relative;
+}
+
+/* textura industrial sutil */
+.login-wrapper::before {
+    content: "";
+    position: absolute;
+    inset: 0;
+    background-image: radial-gradient(rgba(255,255,255,0.05) 1px, transparent 1px);
+    background-size: 20px 20px;
+    opacity: 0.3;
 }
 
 .login-card {
@@ -505,25 +552,44 @@ POPUP / MODAL PROFESIONAL
 }
 
 .dataTables_wrapper .dataTables_filter input {
-    border-radius: 8px;
-    border: 1px solid #ddd;
-    padding: 5px 10px;
+    border-radius: 20px;
+    padding: 6px 14px;
+    border: 1px solid var(--border-color);
+}
+
+.dataTables_wrapper .dataTables_filter input:focus {
+    border-color: var(--primary);
+    box-shadow: 0 0 0 3px rgba(249,115,22,.2);
 }
 
 .dataTables_wrapper .dataTables_length select {
     border-radius: 8px;
     padding: 5px;
 }
+.badge.bg-success {
+    background: #16a34a !important;
+}
+
+.badge.bg-danger {
+    background: #dc2626 !important;
+}
+
+.badge.bg-warning {
+    background: #f59e0b !important;
+}
 
 .table {
     border-radius: 10px;
     overflow: hidden;
 }
-
 .card {
-    border-radius: 14px;
+    border-radius: 18px;
+    border: 1px solid var(--border-color);
+    box-shadow: 0 10px 30px rgba(0,0,0,.08);
 }
-
+.card:hover {
+    transform: translateY(-4px);
+}
 .categoria-item {
     cursor: pointer;
 }
@@ -627,4 +693,45 @@ body.dark-mode .dataTables_filter input:focus {
 .chart-container {
     position: relative;
     height: 300px;
+}
+
+.form-label {
+    color: var(--text-main);
+    font-weight: 500;
+    font-size: 13.5px;
+}
+body.dark-mode .form-label {
+    color: #e2e8f0; /* más claro que el texto normal */
+}
+.form-control::placeholder {
+    color: var(--text-muted);
+    opacity: 0.8;
+}
+
+body.dark-mode .form-control::placeholder {
+    color: #94a3b8;
+}
+.form-group {
+    margin-bottom: 16px;
+}
+
+.form-label {
+    margin-bottom: 6px;
+    display: block;
+}
+
+.form-control,
+.form-select {
+    border-radius: 10px;
+    padding: 10px 12px;
+}
+h1, h2, h3, h4, h5, h6 {
+    color: var(--text-main);
+    font-weight: 600;
+}
+
+body.dark-mode h1,
+body.dark-mode h2,
+body.dark-mode h3 {
+    color: #f1f5f9; /* blanco suave, no quema la vista */
 }

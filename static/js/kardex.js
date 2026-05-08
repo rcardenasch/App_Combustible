@@ -1,183 +1,157 @@
-// ========================================
-// KARDEX JS
-// ========================================
-
 document.addEventListener("DOMContentLoaded", function () {
 
-    iniciarEscanerCodigoBarras();
-    validarTransferencias();
-    validarAjustes();
-    activarSpinnersForms();
+    const vehiculoSelect = document.getElementById("vehiculo");
+
+    if (vehiculoSelect) {
+
+        vehiculoSelect.addEventListener("change", function () {
+
+            let vehiculoId = this.value;
+
+            if (!vehiculoId) return;
+
+            fetch(`/kardex/ultimo_horometro/${vehiculoId}`)
+                .then(res => res.json())
+                .then(data => {
+
+                    document.getElementById("horometro_inicial").value =
+                        data.horometro_final || 0;
+
+                    document.getElementById("horometro_inicial_view").innerText =
+                        data.horometro_final || 0;
+                });
+
+        });
+
+    }
 
 });
 
+$('#modalNuevo').on('hidden.bs.modal', function () {
 
-// ========================================
-// ESCÁNER CÓDIGO BARRAS
-// ========================================
+    $("#formKardex")[0].reset();
 
-function iniciarEscanerCodigoBarras() {
+    $("#vehiculo").prop("disabled", false);
+    $("#horometro_final").prop("disabled", false);
+    $("#tanque_lleno").prop("disabled", false);
 
-    const input = document.getElementById("codigoBarras");
-    const resultado = document.getElementById("resultadoProducto");
+    $("#alertStock").addClass("d-none");
+    // 🔥 RESET BOTÓN
+    enviando = false;
 
-    if (!input) return;
+    $("#btnGuardar")
+        .prop("disabled", false)
+        .html('<i class="bi bi-check-circle me-1"></i> Procesar Movimiento');
 
-    input.addEventListener("keypress", async function (e) {
 
-        if (e.key !== "Enter") return;
+});
 
-        e.preventDefault();
+ $(document).ready(function () {
 
-        const codigo = input.value.trim();
-
-        if (!codigo) return;
-
-        resultado.innerHTML = "Buscando producto...";
-
-        try {
-
-            const response = await fetch(`/api/kardex/producto/${codigo}`);
-            const data = await response.json();
-
-            if (!data.ok) {
-                resultado.innerHTML = `
-                    <div class="text-danger fw-semibold">
-                        Producto no encontrado
-                    </div>
-                `;
-                input.value = "";
-                return;
-            }
-
-            resultado.innerHTML = `
-                <div class="fw-bold">${data.nombre}</div>
-                <div class="text-muted small">
-                    ID: ${data.id}
-                </div>
-                <div class="small">
-                    Costo Promedio: ${data.precio_compra}
-                </div>
-            `;
-
-            input.value = "";
-
-        } catch (error) {
-
-            resultado.innerHTML = `
-                <div class="text-danger">
-                    Error al buscar producto
-                </div>
-            `;
+        // 2. Inicializar DataTable (UNA SOLA VEZ)
+        if ($(".datatable").length) {
+            $(".datatable").DataTable({
+                pageLength: 5,
+                responsive: true,
+                language: {
+                    search: "Buscar:",
+                    lengthMenu: "Mostrar _MENU_ registros",
+                    info: "Mostrando _START_ a _END_ de _TOTAL_",
+                    emptyTable: "No hay vehículos",
+                    paginate: { previous: "Anterior", next: "Siguiente" }
+                }
+            });
         }
-    });
-}
 
+        let enviando = false;
 
-// ========================================
-// VALIDAR TRANSFERENCIAS
-// ========================================
+        $("#formKardex").on("submit", function (e) {
 
-function validarTransferencias() {
-
-    const forms = document.querySelectorAll('form[action*="transferencia"]');
-
-    forms.forEach(form => {
-
-        form.addEventListener("submit", function (e) {
-
-            const origen = form.querySelector('[name="origen_id"]').value;
-            const destino = form.querySelector('[name="destino_id"]').value;
-            const cantidad = parseFloat(
-                form.querySelector('[name="cantidad"]').value
-            );
-
-            if (origen === destino) {
+            if (enviando) {
                 e.preventDefault();
-                alert("Origen y destino no pueden ser iguales.");
+                return false;
+            }
+
+            const tipo = $("#tipo").val();
+            const tanque = $("#tanque option:selected");
+            const cantidad = parseFloat($("#cantidad").val()) || 0;
+            const stock = parseFloat(tanque.data("stock")) || 0;
+
+            // =========================
+            // VALIDACIONES
+            // =========================
+            if (!tipo) {
+                alert("Seleccione tipo de operación");
+                e.preventDefault();
                 return;
             }
 
-            if (cantidad <= 0 || isNaN(cantidad)) {
-                e.preventDefault();
-                alert("Cantidad inválida.");
-                return;
+            if (tipo === "SALIDA") {
+
+                if (!$("#vehiculo").val()) {
+                    alert("Debe seleccionar vehículo");
+                    e.preventDefault();
+                    return;
+                }
+                    // 🔥 VALIDACIÓN NUEVA
+                if (!cantidad || cantidad <= 0) {
+                    alert("Debe ingresar una cantidad válida de galones");
+                    e.preventDefault();
+                    return;
+                }
+
+                if (cantidad > stock) {
+                    $("#alertStock")
+                        .removeClass("d-none")
+                        .text("Stock insuficiente. Disponible: " + stock);
+
+                    e.preventDefault();
+                    return;
+                }
             }
 
+            // =========================
+            // BLOQUEO SOLO SI TODO OK
+            // =========================
+            enviando = true;
+
+            $("#btnGuardar")
+                .prop("disabled", true)
+                .html('<i class="bi bi-hourglass-split me-1"></i> Procesando...');
         });
+});
 
-    });
-}
+$("#tipo").on("change", function () {
+    toggleCamposPorTipo();
+});
 
+function toggleCamposPorTipo() {
 
-// ========================================
-// VALIDAR AJUSTES INDIVIDUALES
-// ========================================
+    const tipo = $("#tipo").val();
 
-function validarAjustes() {
+    const vehiculo = $("#vehiculo");
+    const horoFinal = $("#horometro_final");
+    const tanqueLleno = $("#tanque_lleno");
 
-    const forms = document.querySelectorAll('form[action*="/kardex/ajuste"]');
+    if (tipo === "ENTRADA") {
 
-    forms.forEach(form => {
+        vehiculo.prop("disabled", true).val("");
+        horoFinal.prop("disabled", true).val("");
+        tanqueLleno.prop("checked", false).prop("disabled", true);
 
-        form.addEventListener("submit", function (e) {
+    } else if (tipo === "SALIDA") {
 
-            const stock = parseFloat(
-                form.querySelector('[name="nuevo_stock"]').value
-            );
+        vehiculo.prop("disabled", false);
+        horoFinal.prop("disabled", false);
+        tanqueLleno.prop("disabled", false);
 
-            if (stock < 0 || isNaN(stock)) {
-                e.preventDefault();
-                alert("El stock no puede ser negativo.");
-                return;
-            }
+    } else {
 
-        });
+        // OPERACION
+        vehiculo.prop("disabled", false);
+        horoFinal.prop("disabled", false);
+        tanqueLleno.prop("checked", false).prop("disabled", true);
 
-    });
+    }
 
-}
-
-
-// ========================================
-// SPINNER BOTONES SUBMIT
-// ========================================
-
-function activarSpinnersForms() {
-
-    document.querySelectorAll("form").forEach(form => {
-
-        form.addEventListener("submit", function () {
-
-            const btn = form.querySelector("button[type='submit'], button:not([type])");
-
-            if (!btn) return;
-
-            btn.disabled = true;
-
-            const textoOriginal = btn.innerHTML;
-
-            btn.innerHTML = `
-                <span class="spinner-border spinner-border-sm me-2"></span>
-                Procesando...
-            `;
-
-            setTimeout(() => {
-                btn.innerHTML = textoOriginal;
-                btn.disabled = false;
-            }, 5000);
-
-        });
-
-    });
-
-}
-
-
-// ========================================
-// CONFIRM RESET STOCK
-// ========================================
-
-function confirmarReset() {
-    return confirm("¿Seguro que deseas resetear todo el stock?");
 }

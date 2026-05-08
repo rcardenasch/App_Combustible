@@ -1,0 +1,368 @@
+{% extends "base.html" %}
+{% block title %}Operadores{% endblock %}
+
+{% block content %}
+
+{% set puede_crear = current_user.has_permission('operadores.crear') %}
+{% set puede_editar = current_user.has_permission('operadores.editar') %}
+{% set puede_eliminar = current_user.has_permission('operadores.eliminar') %}
+
+<!-- HEADER -->
+<div class="d-flex justify-content-between align-items-center mb-4 py-2">
+
+    <div>
+        <h3 class="fw-bold mb-0">
+            <i class="bi bi-person-badge me-2 text-primary"></i>
+            Gestión de Operadores
+        </h3>
+
+        <p class="text-muted small mb-0">
+            Administración de personal y asignaciones
+        </p>
+    </div>
+
+    {% if puede_crear %}
+    <button class="btn btn-primary btn-lg shadow-sm"
+            data-bs-toggle="modal"
+            data-bs-target="#modalNuevoOperador">
+
+        <i class="bi bi-plus-lg me-2"></i>
+        Nuevo Operador
+    </button>
+    {% endif %}
+</div>
+
+<!-- TABLA -->
+<div class="card border-0 shadow-sm overflow-hidden">
+
+    <div class="card-body p-0">
+
+        <div class="table-responsive">
+
+            <table class="table table-hover align-middle mb-0 datatable">
+
+                <thead class="bg-light">
+                    <tr>
+                        <th class="ps-4">ID</th>
+                        <th>Operador</th>
+                        <th>DNI</th>
+                        <th>Proyecto</th>
+                        <th class="text-center">Estado</th>
+                        <th class="text-center pe-4">Acciones</th>
+                    </tr>
+                </thead>
+
+                <tbody>
+
+                    {% for o in lista %}
+                    <tr>
+
+                        <td class="ps-4 text-muted">
+                            #{{ o.id }}
+                        </td>
+
+                        <td>
+                            <div class="d-flex align-items-center">
+
+                                <div class="avatar-sm me-3 bg-primary-subtle text-primary rounded-circle d-flex align-items-center justify-content-center"
+                                     style="width:40px;height:40px;">
+
+                                    {{ o.nombre[:1].upper() }}
+
+                                </div>
+
+                                <div>
+                                    <div class="fw-bold">
+                                        {{ o.nombre }}
+                                    </div>
+
+                                    <small class="text-muted">
+                                        Operador activo
+                                    </small>
+                                </div>
+
+                            </div>
+                        </td>
+
+                        <td>
+                            <span class="badge bg-light text-dark border">
+                                {{ o.documento }}
+                            </span>
+                        </td>
+
+                        <td>
+                            {% if o.proyecto %}
+                            <span class="badge bg-info-subtle text-info border border-info-subtle">
+                                <i class="bi bi-building me-1"></i>
+                                {{ o.proyecto.nombre }}
+                            </span>
+                            {% else %}
+                            <span class="text-muted">
+                                Sin asignar
+                            </span>
+                            {% endif %}
+                        </td>
+
+                        <td class="text-center">
+                            <span class="badge rounded-pill bg-success-subtle text-success border border-success-subtle px-3">
+                                Activo
+                            </span>
+                        </td>
+
+                        <td class="text-center pe-4">
+
+                            <div class="btn-group shadow-sm">
+
+                                {% if puede_editar %}
+                                <button class="btn btn-outline-warning btn-sm"
+                                        data-bs-toggle="modal"
+                                        data-bs-target="#modalEditar{{ o.id }}">
+
+                                    <i class="bi bi-pencil"></i>
+                                </button>
+                                {% endif %}
+
+                                {% if puede_eliminar %}
+                                <form method="POST"
+                                      action="{{ url_for('operadores_eliminar', id=o.id) }}">
+
+                                    <button type="button"
+                                            class="btn btn-outline-danger btn-sm"
+                                            onclick="confirmarEliminacion(this.closest('form'))">
+
+                                        <i class="bi bi-trash"></i>
+                                    </button>
+
+                                </form>
+                                {% endif %}
+
+                            </div>
+
+                        </td>
+
+                    </tr>
+                    {% endfor %}
+
+                </tbody>
+
+            </table>
+
+        </div>
+
+    </div>
+
+</div>
+
+<!-- MODAL NUEVO -->
+{% if puede_crear %}
+<div class="modal fade" id="modalNuevoOperador">
+
+    <div class="modal-dialog modal-lg modal-dialog-centered">
+
+        <div class="modal-content border-0 shadow-lg">
+
+            <form method="POST"
+                  action="{{ url_for('operadores_nuevo') }}">
+
+                <div class="modal-header bg-light">
+
+                    <h5 class="modal-title">
+                        <i class="bi bi-person-plus me-2 text-primary"></i>
+                        Nuevo Operador
+                    </h5>
+
+                    <button class="btn-close"
+                            data-bs-dismiss="modal"></button>
+
+                </div>
+
+                <div class="modal-body p-4">
+
+                    <div class="row g-3">
+
+                        <div class="col-md-6">
+                            <label class="form-label fw-semibold">
+                                Nombre
+                            </label>
+
+                            <input type="text"
+                                   name="nombre"
+                                   class="form-control"
+                                   required>
+                        </div>
+
+                        <div class="col-md-3">
+                            <label class="form-label fw-semibold">
+                                DNI
+                            </label>
+
+                            <input type="text"
+                                   name="documento"
+                                   class="form-control">
+                        </div>
+
+                        <div class="col-md-3">
+                            <label class="form-label fw-semibold">
+                                Proyecto
+                            </label>
+
+                            <select name="proyecto_id"
+                                    class="form-select">
+
+                                <option value="">Seleccionar...</option>
+
+                                {% for p in proyectos %}
+                                <option value="{{ p.id }}">
+                                    {{ p.nombre }}
+                                </option>
+                                {% endfor %}
+                            </select>
+                        </div>
+
+                    </div>
+
+                </div>
+
+                <div class="modal-footer bg-light border-0">
+
+                    <button type="button"
+                            class="btn btn-outline-secondary"
+                            data-bs-dismiss="modal">
+
+                        Cancelar
+                    </button>
+
+                    <button class="btn btn-primary px-4">
+                        <i class="bi bi-save me-1"></i>
+                        Guardar
+                    </button>
+
+                </div>
+
+            </form>
+
+        </div>
+
+    </div>
+
+</div>
+{% endif %}
+
+<!-- =========================
+MODALES EDITAR
+========================= -->
+{% for o in lista %}
+
+<div class="modal fade"
+     id="modalEditar{{ o.id }}"
+     tabindex="-1"
+     aria-hidden="true">
+
+    <div class="modal-dialog modal-lg modal-dialog-centered">
+
+        <div class="modal-content border-0 shadow-lg">
+
+            <form method="POST"
+                  action="{{ url_for('operadores_editar', id=o.id) }}">
+
+                <div class="modal-header bg-light">
+
+                    <h5 class="modal-title">
+                        <i class="bi bi-pencil-square text-warning me-2"></i>
+                        Editar Operador
+                    </h5>
+
+                    <button type="button"
+                            class="btn-close"
+                            data-bs-dismiss="modal">
+                    </button>
+
+                </div>
+
+                <div class="modal-body p-4">
+
+                    <div class="row g-3">
+
+                        <div class="col-md-6">
+                            <label class="form-label fw-semibold">
+                                Nombre
+                            </label>
+
+                            <input type="text"
+                                   name="nombre"
+                                   class="form-control"
+                                   value="{{ o.nombre }}"
+                                   required>
+                        </div>
+
+                        <div class="col-md-3">
+                            <label class="form-label fw-semibold">
+                                DNI
+                            </label>
+
+                            <input type="text"
+                                   name="documento"
+                                   class="form-control"
+                                   value="{{ o.documento }}">
+                        </div>
+
+                        <div class="col-md-3">
+                            <label class="form-label fw-semibold">
+                                Proyecto
+                            </label>
+
+                            <select name="proyecto_id"
+                                    class="form-select">
+
+                                <option value="">Seleccionar...</option>
+
+                                {% for p in proyectos %}
+                                <option value="{{ p.id }}"
+                                    {% if o.proyecto_id == p.id %}selected{% endif %}>
+
+                                    {{ p.nombre }}
+
+                                </option>
+                                {% endfor %}
+
+                            </select>
+                        </div>
+
+                    </div>
+
+                </div>
+
+                <div class="modal-footer bg-light border-0">
+
+                    <button type="button"
+                            class="btn btn-outline-secondary"
+                            data-bs-dismiss="modal">
+
+                        Cancelar
+                    </button>
+
+                    <button type="submit"
+                            class="btn btn-warning px-4 fw-bold">
+
+                        <i class="bi bi-check2-circle me-1"></i>
+                        Guardar Cambios
+                    </button>
+
+                </div>
+
+            </form>
+
+        </div>
+
+    </div>
+
+</div>
+
+{% endfor %}
+
+
+<script src="{{ url_for('static', filename='js/operadores.js') }}"></script>
+
+
+
+{% endblock %}

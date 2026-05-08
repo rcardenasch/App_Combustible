@@ -1,0 +1,50 @@
+{% extends "base.html" %}
+
+{% block title %}Reporte de Rendimiento{% endblock %}
+
+{% block content %}
+
+<div class="card border-0 shadow p-4" style="border-radius: 12px;">
+    <!-- Encabezado con sutil borde inferior -->
+    <div class="d-flex align-items-center mb-4 pb-2 border-bottom">
+        <div class="bg-success bg-opacity-10 p-2 rounded-3 me-3">
+            <i class="bi bi-file-earmark-excel-fill text-success fs-4"></i>
+        </div>
+        <h5 class="fw-bold mb-0">Reporte de Rendimientos</h5>
+    </div>
+
+    <form method="GET" action="/reportes/rendimientos/excel" class="row g-3">
+        <!-- Tipo de Reporte -->
+        <div class="col-md-4">
+            <label class="form-label fw-semibold text-secondary small">Tipo de reporte</label>
+            <div class="input-group">
+                <span class="input-group-text bg-light border-end-0"><i class="bi bi-layers small"></i></span>
+                <select name="tipo" class="form-select border-start-0 ps-0" required>
+                    <option value="semanal">Semanal</option>
+                    <option value="mensual">Mensual</option>
+                    <option value="anual">Anual</option>
+                </select>
+            </div>
+        </div>
+
+        <!-- Fecha Base -->
+        <div class="col-md-4">
+            <label class="form-label fw-semibold text-secondary small">Fecha base</label>
+            <div class="input-group">
+                <span class="input-group-text bg-light border-end-0"><i class="bi bi-calendar3 small"></i></span>
+                <input type="date" name="fecha" class="form-control border-start-0 ps-0" required>
+            </div>
+        </div>
+
+        <!-- Botón de Acción -->
+        <div class="col-md-4 d-flex align-items-end">
+            <button type="submit" class="btn btn-success w-100 fw-bold d-flex align-items-center justify-content-center gap-2 shadow-sm py-2">
+                <i class="bi bi-file-earmark-arrow-down-fill"></i> 
+                Generar Excel
+            </button>
+        </div>
+    </form>
+</div>
+
+
+{% endblock %}

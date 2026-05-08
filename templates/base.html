@@ -3,7 +3,7 @@
 
 <head>
     <meta charset="UTF-8">
-    <title>{% block title %}Ferretería Rocotin{% endblock %}</title>
+    <title>{% block title %}Combustible{% endblock %}</title>
     <meta name="viewport" content="width=device-width, initial-scale=1">
 
     <!-- Bootstrap -->
@@ -29,8 +29,8 @@
     <!-- SIDEBAR -->
     <div class="sidebar" id="sidebar">
 
-        <h4 class="text-center mb-4">
-            <i class="bi bi-hospital"></i> Ferretería
+        <h4 class="text-center text-white mb-4 fw-bold">
+            <i class="bi bi-fuel-pump-fill text-warning me-2"></i>Combustible
         </h4>
 
         <a href="{{ url_for('index') }}">
@@ -51,48 +51,38 @@
 
         <hr>
 
-        <hr>
         <small class="px-3 text-secondary">Inventario</small>
-        <a href="{{ url_for('productos_list') }}">
-            <i class="bi bi-box-seam"></i> Productos
+        <a href="{{ url_for('proyectos_list') }}"> 
+            <i class="bi bi-kanban me-2"></i>Proyectos 
         </a>
 
-
-        <a href="{{ url_for('categorias_list') }}">
-            <i class="bi bi-tags"></i> Categorías
+        <a href="{{ url_for('vehiculos_list') }}">
+            <i class="bi bi-truck me-2 "></i>Vehiculos
+        </a>
+        <a href="{{ url_for('operadores_list') }}">
+            <i class="bi bi-person-badge me-2 "></i> Operadores
         </a>
 
-        <hr>
-
-        <small class="px-3 text-secondary">Ventas</small>
-
-        <a href="{{ url_for('ventas_list') }}">
-            <i class="bi bi-cart"></i> Ventas
-        </a>
-
-        <a href="{{ url_for('clientes_list') }}">
-            <i class="bi bi-person"></i> Clientes
+        <a href="{{ url_for('tanques_list') }}">
+            <i class="bi bi-tags"></i> Tanques
         </a>
 
         <hr>
-        <small class="px-3 text-secondary">Compras</small>
 
-        <a href="{{ url_for('compras_list') }}">
-            <i class="bi bi-truck"></i> Compras
-        </a>
-
-        <a href="{{ url_for('proveedores_list') }}">
-            <i class="bi bi-building"></i> Proveedores
-        </a>
-        <hr>
         <small class="px-3 text-secondary">Kardex</small>
 
-        <a href="{{ url_for('kardex_index') }}">
-            <i class="bi bi-truck"></i> Kardex
+        <a href="{{ url_for('kardex_list') }}">
+            <i class="bi bi-fuel-pump-fill me-2"></i> Kardex
         </a>
 
-        <a href="{{ url_for('kardex_movimientos') }}">
-            <i class="bi bi-building"></i> Movimientos
+        <a href="{{ url_for('rendimiento_list') }}">
+            <i class=" bi bi-speedometer2 me-2"></i> Rendimiento
+        </a>
+
+        <small class="px-3 text-secondary">Reportes</small>
+
+        <a href="{{ url_for('reporte_rendimiento') }}">
+            <i class="bi bi-bar-chart-line me-2"></i> Reporte Rendimiento
         </a>
     </div>
 
@@ -153,9 +143,9 @@
             {% block content %}{% endblock %}
 
             {% if current_user.is_authenticated %}
-        </div>
+        </div> <!-- content -->
         {% else %}
-    </div>
+    </div> <!-- login-page -->
     {% endif %}
 
     <!-- JS -->

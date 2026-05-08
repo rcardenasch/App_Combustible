@@ -6,86 +6,101 @@
 {% set puede_crear = current_user.has_permission('roles.crear') %}
 {% set puede_editar = current_user.has_permission('roles.editar') %}
 {% set puede_eliminar = current_user.has_permission('roles.eliminar') %}
-
 <!-- HEADER -->
-<div class="d-flex justify-content-between align-items-center mb-4">
-    <h3 class="fw-bold mb-0">
-        <i class="bi bi-shield-lock"></i> Roles
-    </h3>
+<div class="d-flex justify-content-between align-items-center mb-4 py-2">
+    <div>
+        <h3 class="fw-bold mb-0">
+            <i class="bi bi-shield-lock-fill me-2 text-primary"></i>Configuración de Roles
+        </h3>
+        <p class="text-muted small mb-0">Define los niveles de acceso y permisos por módulo</p>
+    </div>
 
     {% if puede_crear %}
-    <button class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#modalNuevoRol">
-        <i class="bi bi-plus-circle"></i> Nuevo Rol
+    <button class="btn btn-primary btn-lg shadow-sm" data-bs-toggle="modal" data-bs-target="#modalNuevoRol">
+        <i class="bi bi-plus-circle me-2"></i> Crear Nuevo Rol
     </button>
     {% endif %}
 </div>
 
 <!-- TABLA -->
-<div class="card">
+<div class="card border-0 shadow-sm overflow-hidden">
     <div class="card-body p-0">
-
         <div class="table-responsive">
-            <table class="table table-hover mb-0 datatable">
-                <thead>
+            <table class="table table-hover align-middle mb-0 datatable">
+                <thead class="bg-light">
                     <tr>
-                        <th>ID</th>
-                        <th>Nombre</th>
-                        <th>Permisos</th>
-                        <th class="text-center">Acciones</th>
+                        <th class="ps-4 py-3 text-uppercase small fw-bold text-secondary" style="width: 80px;">ID</th>
+                        <th class="py-3 text-uppercase small fw-bold text-secondary" style="width: 200px;">Nombre del Rol</th>
+                        <th class="py-3 text-uppercase small fw-bold text-secondary">Mapa de Permisos</th>
+                        <th class="py-3 text-uppercase small fw-bold text-secondary text-center" style="width: 150px;">Acciones</th>
                     </tr>
                 </thead>
 
                 <tbody>
                     {% for r in lista %}
                     <tr>
-                        <td>{{ r.id }}</td>
-                        <td class="fw-semibold">{{ r.name }}</td>
+                        <td class="ps-4 text-muted small">#{{ r.id }}</td>
+                        <td>
+                            <div class="d-flex align-items-center">
+                                <div class="bg-primary text-white rounded px-2 py-1 me-2 small fw-bold">
+                                    {{ r.name[:2] | upper }}
+                                </div>
+                                <span class="fw-bold text-dark">{{ r.name }}</span>
+                            </div>
+                        </td>
 
                         <td>
-                            {% for p in r.permissions %}
-                            <span class="badge bg-primary-subtle text-primary">
-                                {{ p.module.name }}.{{ p.action }}
-                            </span>
-                            {% endfor %}
+                            <div class="d-flex flex-wrap gap-1">
+                                {% for p in r.permissions %}
+                                <span class="badge bg-secondary-subtle text-secondary border border-secondary-subtle fw-normal" 
+                                      style="font-size: 0.75rem;" 
+                                      title="Módulo: {{ p.module.name }}">
+                                    <span class="fw-bold text-dark text-uppercase">{{ p.module.name }}</span>:{{ p.action }}
+                                </span>
+                                {% endfor %}
+                                {% if not r.permissions %}
+                                <span class="text-muted small italic">Sin permisos asignados</span>
+                                {% endif %}
+                            </div>
                         </td>
 
-                        <td class="text-center">
-
-                            {% if puede_editar %}
-                            <button class="btn btn-sm btn-warning" onclick='abrirModalEditar(
-                                    {{ r.id }},
-                                    {{ r.name | tojson }},
-                                    {{ r.permissions | map(attribute="id") | list | tojson }}
-                                )'>
-                                <i class="bi bi-pencil"></i>
-                            </button>
-                            {% endif %}
-
-                            {% if puede_eliminar %}
-                            <form method="POST" action="{{ url_for('roles_eliminar', id=r.id) }}"
-                                style="display:inline;">
-                                <button type="button" class="btn btn-sm btn-danger"
-                                    onclick="confirmarEliminacion(this.closest('form'))">
-                                    <i class="bi bi-trash"></i>
+                        <td class="text-center pe-4">
+                            <div class="btn-group shadow-sm">
+                                {% if puede_editar %}
+                                <button class="btn btn-outline-warning btn-sm" 
+                                        onclick='abrirModalEditar(
+                                            {{ r.id }},
+                                            {{ r.name | tojson }},
+                                            {{ r.permissions | map(attribute="id") | list | tojson }}
+                                        )' title="Editar Permisos">
+                                    <i class="bi bi-pencil"></i>
                                 </button>
-                            </form>
-                            {% endif %}
+                                {% endif %}
 
+                                {% if puede_eliminar %}
+                                <form method="POST" action="{{ url_for('roles_eliminar', id=r.id) }}" class="d-inline">
+                                    <button type="button" class="btn btn-outline-danger btn-sm"
+                                        onclick="confirmarEliminacion(this.closest('form'))" title="Eliminar Rol">
+                                        <i class="bi bi-trash"></i>
+                                    </button>
+                                </form>
+                                {% endif %}
+                            </div>
                         </td>
                     </tr>
-
                     {% else %}
                     <tr>
-                        <td colspan="4" class="text-center text-muted py-4">
-                            No hay roles
+                        <td colspan="4" class="text-center py-5">
+                            <div class="text-muted">
+                                <i class="bi bi-shield-slash fs-1 d-block mb-2"></i>
+                                No hay roles configurados actualmente
+                            </div>
                         </td>
                     </tr>
                     {% endfor %}
                 </tbody>
-
             </table>
         </div>
-
     </div>
 </div>
 

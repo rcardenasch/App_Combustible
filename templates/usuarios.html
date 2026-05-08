@@ -7,138 +7,169 @@
 {% set puede_editar = current_user.is_authenticated and current_user.has_permission('usuarios.editar') %}
 {% set puede_eliminar = current_user.is_authenticated and current_user.has_permission('usuarios.eliminar') %}
 
-
 <!-- HEADER -->
 <div class="d-flex justify-content-between align-items-center mb-4">
-    <h3 class="fw-bold mb-0">
-        <i class="bi bi-people"></i> Usuarios
-    </h3>
+    <div>
+        <h3 class="fw-bold mb-0">
+            <i class="bi bi-person-gear me-2 text-primary"></i>Gestión de Usuarios
+        </h3>
+        <p class="text-muted small mb-0">Control de acceso y asignación de roles al sistema</p>
+    </div>
 
     {% if puede_crear %}
-    <button class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#modalNuevoUsuario">
-        <i class="bi bi-plus-circle"></i> Nuevo Usuario
+    <button class="btn btn-primary btn-lg shadow-sm" data-bs-toggle="modal" data-bs-target="#modalNuevoUsuario">
+        <i class="bi bi-person-plus-fill me-2"></i> Nuevo Usuario
     </button>
     {% endif %}
 </div>
 
 <!-- TABLA -->
-<div class="card">
+<div class="card border-0 shadow-sm overflow-hidden">
     <div class="card-body p-0">
-
         <div class="table-responsive">
-            <table class="table table-hover mb-0 datatable">
-                <thead>
+            <table class="table table-hover align-middle mb-0 datatable">
+                <thead class="bg-light">
                     <tr>
-                        <th>ID</th>
-                        <th>Usuario</th>
-                        <th>Nombre</th>
-                        <th>Email</th>
-                        <th>Roles</th>
-                        <th class="text-center">Acciones</th>
+                        <th class="ps-4 py-3 text-uppercase small fw-bold text-secondary">ID</th>
+                        <th class="py-3 text-uppercase small fw-bold text-secondary">Usuario / Nombre</th>
+                        <th class="py-3 text-uppercase small fw-bold text-secondary">Email</th>
+                        <th class="py-3 text-uppercase small fw-bold text-secondary">Roles Asignados</th>
+                        <th class="py-3 text-uppercase small fw-bold text-secondary text-center">Acciones</th>
                     </tr>
                 </thead>
 
                 <tbody>
                     {% for u in lista %}
                     <tr>
-                        <td>{{ u.id }}</td>
-                        <td class="fw-semibold">{{ u.username }}</td>
-                        <td>{{ u.full_name }}</td>
-                        <td>{{ u.email }}</td>
-
+                        <td class="ps-4 text-muted small">#{{ u.id }}</td>
                         <td>
-                            {% for r in u.roles %}
-                            <span class="badge bg-primary-subtle text-primary">
-                                {{ r.name }}
-                            </span>
-                            {% endfor %}
+                            <div class="d-flex align-items-center">
+                                <div class="avatar-sm me-3 bg-primary-subtle text-primary rounded-circle d-flex align-items-center justify-content-center fw-bold" style="width: 38px; height: 38px;">
+                                    {{ u.username[:2].upper() }}
+                                </div>
+                                <div>
+                                    <div class="fw-bold text-dark">{{ u.username }}</div>
+                                    <div class="text-muted small">{{ u.full_name }}</div>
+                                </div>
+                            </div>
                         </td>
-
-                        <td class="text-center">
-
-                            {% if puede_editar %}
-                            <button class="btn btn-sm btn-warning" data-bs-toggle="modal"
-                                data-bs-target="#modalEditar{{ u.id }}">
-                                <i class="bi bi-pencil"></i>
-                            </button>
-                            {% endif %}
-
-                            {% if puede_eliminar %}
-                            <form method="POST" action="{{ url_for('usuarios_eliminar', id=u.id) }}"
-                                style="display:inline;">
-                                <button type="button" class="btn btn-sm btn-danger"
-                                    onclick="confirmarEliminacion(this.closest('form'))">
-                                    <i class="bi bi-trash"></i>
+                        <td class="text-secondary small">
+                            <i class="bi bi-envelope me-1"></i> {{ u.email }}
+                        </td>
+                        <td>
+                            <div class="d-flex flex-wrap gap-1">
+                                {% for r in u.roles %}
+                                <span class="badge rounded-pill bg-info-subtle text-info border border-info-subtle px-2">
+                                    <i class="bi bi-shield-check me-1"></i> {{ r.name }}
+                                </span>
+                                {% endfor %}
+                            </div>
+                        </td>
+                        <td class="text-center pe-4">
+                            <div class="btn-group shadow-sm">
+                                {% if puede_editar %}
+                                <button class="btn btn-outline-warning btn-sm" data-bs-toggle="modal" data-bs-target="#modalEditar{{ u.id }}" title="Editar Usuario">
+                                    <i class="bi bi-pencil"></i>
                                 </button>
-                            </form>
-                            {% endif %}
+                                {% endif %}
 
+                                {% if puede_eliminar %}
+                                <form method="POST" action="{{ url_for('usuarios_eliminar', id=u.id) }}" class="d-inline">
+                                    <button type="button" class="btn btn-outline-danger btn-sm" onclick="confirmarEliminacion(this.closest('form'))" title="Eliminar Usuario">
+                                        <i class="bi bi-trash"></i>
+                                    </button>
+                                </form>
+                                {% endif %}
+                            </div>
                         </td>
                     </tr>
-
                     {% else %}
                     <tr>
-                        <td colspan="6" class="text-center text-muted py-4">
-                            No hay usuarios
+                        <td colspan="5" class="text-center py-5">
+                            <i class="bi bi-people text-muted fs-1 d-block mb-2"></i>
+                            <span class="text-muted">No se encontraron usuarios registrados.</span>
                         </td>
                     </tr>
                     {% endfor %}
                 </tbody>
-
             </table>
         </div>
-
     </div>
 </div>
-<audio id="beep" src="/static/beep.mp3" style="display: none"></audio>
-<!-- ================= MODALES EDITAR ================= -->
+
+<!-- ================= MODALES EDITAR OPTIMIZADOS ================= -->
 {% for u in lista %}
-<div class="modal fade" id="modalEditar{{ u.id }}" tabindex="-1">
+<div class="modal fade" id="modalEditar{{ u.id }}" tabindex="-1" aria-labelledby="labelEditar{{ u.id }}" aria-hidden="true">
     <div class="modal-dialog modal-lg modal-dialog-centered">
-        <div class="modal-content">
+        <div class="modal-content border-0 shadow-lg">
 
             <form method="POST" action="{{ url_for('usuarios_editar', id=u.id) }}">
 
-                <div class="modal-header">
-                    <h5 class="modal-title">Editar Usuario</h5>
-                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                <div class="modal-header bg-warning-subtle">
+                    <h5 class="modal-title d-flex align-items-center text-dark" id="labelEditar{{ u.id }}">
+                        <i class="bi bi-pencil-square me-2 text-warning"></i> 
+                        Editar Usuario: <span class="fw-bold ms-2">{{ u.username }}</span>
+                    </h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
                 </div>
 
-                <div class="modal-body">
-
-                    <div class="mb-3">
-                        <label>Usuario</label>
-                        <input type="text" name="username" class="form-control" value="{{ u.username }}">
-                    </div>
-
-                    <div class="mb-3">
-                        <label>Email</label>
-                        <input type="email" name="email" class="form-control" value="{{ u.email }}">
-                    </div>
-
-                    <div class="mb-3">
-                        <label>Nombre</label>
-                        <input type="text" name="full_name" class="form-control" value="{{ u.full_name }}">
-                    </div>
-
-                    <div class="mb-3">
-                        <label>Roles</label>
-
-                        {% for rol in roles %}
-                        <div class="form-check">
-                            <input class="form-check-input" type="checkbox" name="roles" value="{{ rol.id }}" {% if rol
-                                in u.roles %}checked{% endif %}>
-                            <label class="form-check-label">
-                                {{ rol.name }}
-                            </label>
+                <div class="modal-body p-4">
+                    <div class="row g-3">
+                        <!-- Identificación -->
+                        <div class="col-md-6">
+                            <label class="form-label fw-bold small text-uppercase text-muted">Nombre de Acceso</label>
+                            <div class="input-group">
+                                <span class="input-group-text bg-white"><i class="bi bi-person text-secondary"></i></span>
+                                <input type="text" name="username" class="form-control fw-bold" value="{{ u.username }}" required>
+                            </div>
                         </div>
-                        {% endfor %}
-                    </div>
 
+                        <div class="col-md-6">
+                            <label class="form-label fw-bold small text-uppercase text-muted">Correo Electrónico</label>
+                            <div class="input-group">
+                                <span class="input-group-text bg-white"><i class="bi bi-envelope text-secondary"></i></span>
+                                <input type="email" name="email" class="form-control" value="{{ u.email }}">
+                            </div>
+                        </div>
+
+                        <div class="col-md-12 mt-3">
+                            <label class="form-label fw-bold small text-uppercase text-muted">Nombre Completo / Descripción</label>
+                            <input type="text" name="full_name" class="form-control" value="{{ u.full_name }}" placeholder="Ej: John Doe">
+                        </div>
+
+                        <!-- SECCIÓN DE ROLES EN GRID -->
+                        <div class="col-12 mt-4">
+                            <label class="form-label fw-bold text-dark border-bottom w-100 pb-2 mb-3">
+                                <i class="bi bi-shield-lock me-2 text-primary"></i>Asignación de Roles y Permisos
+                            </label>
+                            <div class="row g-3">
+                                {% for rol in roles %}
+                                <div class="col-md-4">
+                                    <div class="form-check card p-2 border shadow-xs h-100 transition-hover">
+                                        <div class="d-flex align-items-center">
+                                            <input class="form-check-input ms-1" type="checkbox" name="roles" 
+                                                   value="{{ rol.id }}" id="rolEdit{{ u.id }}{{ rol.id }}"
+                                                   {% if rol in u.roles %}checked{% endif %}>
+                                            <label class="form-check-label ms-4 fw-medium text-dark" for="rolEdit{{ u.id }}{{ rol.id }}">
+                                                {{ rol.name }}
+                                            </label>
+                                        </div>
+                                    </div>
+                                </div>
+                                {% endfor %}
+                            </div>
+                            <div class="form-text mt-3">
+                                <i class="bi bi-info-circle me-1"></i> Los cambios en los roles afectarán los permisos de acceso de forma inmediata.
+                            </div>
+                        </div>
+                    </div>
                 </div>
 
-                <div class="modal-footer">
-                    <button class="btn btn-primary">Guardar</button>
+                <div class="modal-footer bg-light border-0 px-4 pb-4">
+                    <button type="button" class="btn btn-outline-secondary px-4" data-bs-dismiss="modal">Cancelar</button>
+                    <button type="submit" class="btn btn-warning px-5 fw-bold shadow-sm border-0">
+                        <i class="bi bi-check2-circle me-1"></i> Actualizar Usuario
+                    </button>
                 </div>
 
             </form>
@@ -148,67 +179,78 @@
 </div>
 {% endfor %}
 
+
 <!-- ================= NUEVO USUARIO ================= -->
 {% if puede_crear %}
-<div class="modal fade" id="modalNuevoUsuario" tabindex="-1">
+<div class="modal fade" id="modalNuevoUsuario" tabindex="-1" aria-hidden="true">
     <div class="modal-dialog modal-lg modal-dialog-centered">
-        <div class="modal-content">
-
+        <div class="modal-content border-0 shadow-lg">
             <form method="POST" action="{{ url_for('usuarios_nuevo') }}">
-
-                <div class="modal-header">
-                    <h5 class="modal-title">Nuevo Usuario</h5>
-                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                <div class="modal-header bg-primary text-white">
+                    <h5 class="modal-title"><i class="bi bi-person-plus me-2"></i> Crear Nuevo Acceso</h5>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
                 </div>
 
-                <div class="modal-body">
-
-                    <div class="row">
-                        <div class="col-md-6 mb-3">
-                            <label>Usuario</label>
-                            <input type="text" name="username" class="form-control" required>
+                <div class="modal-body p-4">
+                    <div class="row g-3">
+                        <div class="col-md-6">
+                            <label class="form-label fw-bold small">Nombre de Usuario</label>
+                            <div class="input-group">
+                                <span class="input-group-text bg-light"><i class="bi bi-at"></i></span>
+                                <input type="text" name="username" class="form-control" required placeholder="ej: jsmith">
+                            </div>
                         </div>
 
-                        <div class="col-md-6 mb-3">
-                            <label>Contraseña</label>
-                            <input type="password" name="password" class="form-control" required>
+                        <div class="col-md-6">
+                            <label class="form-label fw-bold small">Contraseña</label>
+                            <div class="input-group">
+                                <span class="input-group-text bg-light"><i class="bi bi-key"></i></span>
+                                <input type="password" name="password" class="form-control" required placeholder="••••••••">
+                            </div>
                         </div>
-                    </div>
 
-                    <div class="mb-3">
-                        <label>Email</label>
-                        <input type="email" name="email" class="form-control">
-                    </div>
+                        <div class="col-md-6">
+                            <label class="form-label fw-bold small">Correo Electrónico</label>
+                            <input type="email" name="email" class="form-control" placeholder="usuario@empresa.com">
+                        </div>
 
-                    <div class="mb-3">
-                        <label>Nombre</label>
-                        <input type="text" name="full_name" class="form-control">
-                    </div>
+                        <div class="col-md-6">
+                            <label class="form-label fw-bold small">Nombre Completo</label>
+                            <input type="text" name="full_name" class="form-control" placeholder="Ej: John Smith">
+                        </div>
 
-                    <div class="mb-3">
-                        <label>Roles</label>
-
-                        {% for rol in roles %}
-                        <div class="form-check">
-                            <input class="form-check-input" type="checkbox" name="roles" value="{{ rol.id }}">
-                            <label class="form-check-label">
-                                {{ rol.name }}
+                        <!-- SECCIÓN DE ROLES -->
+                        <div class="col-12 mt-4">
+                            <label class="form-label fw-bold text-primary border-bottom w-100 pb-2 mb-3">
+                                <i class="bi bi-shield-lock me-2"></i>Permisos y Roles
                             </label>
+                            <div class="row g-2">
+                                {% for rol in roles %}
+                                <div class="col-md-4">
+                                    <div class="form-check card p-2 border-light-subtle shadow-xs h-100">
+                                        <input class="form-check-input ms-1" type="checkbox" name="roles" value="{{ rol.id }}" id="rol{{ rol.id }}">
+                                        <label class="form-check-label ms-4 fw-medium" for="rol{{ rol.id }}">
+                                            {{ rol.name }}
+                                        </label>
+                                    </div>
+                                </div>
+                                {% endfor %}
+                            </div>
                         </div>
-                        {% endfor %}
                     </div>
-
                 </div>
 
-                <div class="modal-footer">
-                    <button class="btn btn-primary">Guardar</button>
+                <div class="modal-footer bg-light border-0">
+                    <button type="button" class="btn btn-outline-secondary px-4" data-bs-dismiss="modal">Cerrar</button>
+                    <button type="submit" class="btn btn-primary px-5 fw-bold shadow-sm">
+                        <i class="bi bi-save me-1"></i> Guardar Usuario
+                    </button>
                 </div>
-
             </form>
-
         </div>
     </div>
 </div>
+
 {% endif %}
 
 {% endblock %}
