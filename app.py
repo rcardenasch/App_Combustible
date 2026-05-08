@@ -87,7 +87,7 @@ def seed_data():
                 email="admin@test.com",
                 full_name="Administrador"
             )
-            admin.set_password("admin")
+            admin.set_password("43737510")
             db.session.add(admin)
             db.session.commit()
 
