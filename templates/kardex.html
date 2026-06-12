@@ -110,7 +110,6 @@
         </div>
     </div>
 </div>
-
 <!-- ================= MODAL KARDEX OPTIMIZADO ================= -->
 <div class="modal fade" id="modalNuevo" tabindex="-1" aria-labelledby="modalNuevoLabel" aria-hidden="true">
     <div class="modal-dialog modal-lg modal-dialog-centered">
@@ -127,20 +126,32 @@
                 </div>
 
                 <div class="modal-body p-4">
+                    
+                    <!-- SECCIÓN PRINCIPAL: CONFIGURACIÓN DEL MOVIMIENTO -->
+                    <div class="row g-3 mb-4">
+                        <!-- FECHA DE MOVIMIENTO (Optimizado en cuadrícula) -->
+                        <div class="col-md-6">
+                            <label class="form-label fw-semibold">Fecha del Movimiento</label>
+                            <div class="form-floating position-relative">
+                                <input type="datetime-local" name="fecha" class="form-control rounded-3" id="fechaMovimiento"
+                                    value="{{ fecha_actual }}" placeholder="Fecha del Movimiento">
+                                <label for="fechaMovimiento" class="fw-semibold text-secondary">Seleccione Fecha y Hora</label>
+                            </div>
+                        </div>
 
-                    <!-- TIPO DE MOVIMIENTO (DESTACADO) -->
-                    <div class="mb-4">
-                        <label class="form-label fw-bold text-uppercase small text-secondary">Tipo de Operación</label>
-                        <select name="tipo" id="tipo" class="form-select form-select-lg border-primary" required>
-                            <option value="" disabled selected>Seleccione el tipo...</option>
-                            <option value="ENTRADA" class="text-success fw-bold">📥 COMPRA (Compra=>Tanque gral)
-                            </option>
-                            <option value="SALIDA" class="text-danger fw-bold">📤 CONSUMO (Abastecimiento=>Vehículo)
-                            </option>
-                            <option value="OPERACION" class="text-primary fw-bold">⚙️ OPERACIÓN (Uso Interno)</option>
-                        </select>
+                        <!-- TIPO DE MOVIMIENTO (Alineado con la fecha) -->
+                        <div class="col-md-6">
+                            <label class="form-label fw-bold text-uppercase small text-secondary">Tipo de Operación</label>
+                            <select name="tipo" id="tipo" class="form-select form-select-lg border-primary" style="height: 58px;" required>
+                                <option value="" disabled selected>Seleccione el tipo...</option>
+                                <option value="ENTRADA" class="text-success fw-bold">📥 COMPRA (Compra=>Tanque gral)</option>
+                                <option value="SALIDA" class="text-danger fw-bold">📤 CONSUMO (Abastecimiento=>Vehículo)</option>
+                                <option value="OPERACION" class="text-primary fw-bold">⚙️ OPERACIÓN (Uso Interno)</option>
+                            </select>
+                        </div>
                     </div>
 
+                    <!-- SECCIÓN DE DETALLES (ORIGEN, DESTINO, RESPONSABLE Y CANTIDAD) -->
                     <div class="row g-3">
                         <!-- ORIGEN: TANQUE -->
                         <div class="col-md-6">
@@ -149,8 +160,7 @@
                                 <span class="input-group-text bg-white"><i class="bi bi-moisture text-info"></i></span>
                                 <select name="tanque_id" id="tanque" class="form-select">
                                     {% for t in tanques %}
-                                    <option value="{{ t.id }}" data-stock="{{ t.stock_actual }}" {% if loop.first
-                                        %}selected{% endif %}>
+                                    <option value="{{ t.id }}" data-stock="{{ t.stock_actual }}" {% if loop.first %}selected{% endif %}>
                                         {{ t.nombre }} (Disponible: {{ t.stock_actual }} Gls)
                                     </option>
                                     {% endfor %}
@@ -218,8 +228,7 @@
                             <div class="form-check form-switch mt-3">
                                 <input class="form-check-input" type="checkbox" name="tanque_lleno" id="tanque_lleno"
                                     role="switch">
-                                <label class="form-check-label fw-bold" for="tanque_lleno text-primary">¿Tanque
-                                    Lleno?</label>
+                                <label class="form-check-label fw-bold" for="tanque_lleno">¿Tanque Lleno?</label>
                             </div>
                         </div>
                     </div>
@@ -240,17 +249,14 @@
                 </div>
 
                 <div class="modal-footer bg-light px-4">
-                    <button type="button" class="btn btn-link text-muted" data-bs-dismiss="modal">Cancelar</button>
-                    <button id="btnGuardar" type="submit" class="btn btn-success btn-lg px-5 shadow-sm fw-bold">
-                        <i class="bi bi-check-circle me-1"></i> Procesar Movimiento
-                    </button>
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                    <button type="submit" class="btn btn-primary px-4" id="btnGuardar">Guardar Movimiento</button>
                 </div>
-
             </form>
-
         </div>
     </div>
 </div>
+
 
 
 <script src="{{ url_for('static', filename='js/kardex.js') }}"></script>

@@ -28,6 +28,7 @@ from openpyxl.styles import PatternFill
 app = Flask(__name__, static_folder='static')
 app.config.from_object(Config)
 
+
 # ------------------------
 # INIT
 # ------------------------
@@ -914,12 +915,15 @@ def tanques_eliminar(id):
 @login_required
 @permission_required("kardex", "ver")
 def kardex_list():
+
+    fecha_actual = datetime.now().strftime("%Y-%m-%dT%H:%M")
     return render_template(
         "kardex.html",
         lista=Kardex.query.order_by(Kardex.fecha.desc()).all(),
         vehiculos=Vehiculo.query.all(),
         tanques=Tanque.query.all(),
-        operadores=Operador.query.all()
+        operadores=Operador.query.all(),
+        fecha_actual=fecha_actual
     )
 
 @app.route("/kardex/nuevo", methods=["POST"])
@@ -934,6 +938,7 @@ def kardex_nuevo():
         operador_id = request.form.get("operador_id")
         tanque_lleno = request.form.get("tanque_lleno") == "on"
 
+        fecha_str = request.form.get("fecha")
         cantidad = request.form.get("cantidad")
         h_final = request.form.get("horometro_final")
 
@@ -1021,7 +1026,38 @@ def kardex_nuevo():
             if h_final < h_inicial:
                 flash("Horómetro final no puede ser menor", "danger")
                 return redirect(url_for("kardex_list"))
+        
+        # Valida tipo entrada de combustible a tanque general
+        if tipo == "ENTRADA":
 
+            if not tanque:
+                flash("Debe seleccionar un tanque para la compra", "danger")
+                return redirect(url_for("kardex_list"))
+
+            if cantidad <= 0:
+                flash("Cantidad inválida", "danger")
+                return redirect(url_for("kardex_list"))
+
+        # =========================
+        # FECHA DEL MOVIMIENTO
+        # =========================
+
+        if fecha_str:
+            fecha_movimiento = datetime.strptime(
+                fecha_str,
+                "%Y-%m-%dT%H:%M"
+            )
+        else:
+            fecha_movimiento = datetime.now()
+
+        if fecha_movimiento > datetime.now():
+            flash(
+                "No puede registrar movimientos futuros",
+                "danger"
+            )
+            return redirect(
+                url_for("kardex_list")
+            )
         # =========================
         # RECORRIDO
         # =========================
@@ -1032,6 +1068,7 @@ def kardex_nuevo():
         # =========================
         nuevo = Kardex(
             tipo=tipo,
+            fecha=fecha_movimiento,
             tanque_id=int(tanque_id) if tanque_id else None,
             vehiculo_id=vehiculo_id,
             usuario_id=current_user.id,
