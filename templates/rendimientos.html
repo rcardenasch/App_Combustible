@@ -1,0 +1,216 @@
+{% extends "base.html" %}
+{% block content %}
+
+<h3 class="fw-bold mb-4 text-dark">
+    <i class="bi bi-speedometer2 me-2 text-primary"></i>Dashboard de Rendimiento
+</h3>
+
+<!-- KPIs -->
+<div class="row g-3">
+    <!-- Rendimiento Promedio -->
+    <div class="col-md-4 col-lg-2">
+        <div class="card border-0 shadow-sm h-100 border-start border-primary border-4">
+            <div class="card-body p-3">
+                <div class="text-muted small fw-bold text-uppercase">Rend. Promedio</div>
+                <div class="d-flex align-items-center mt-2">
+                    <h3 class="fw-bold mb-0">{{ "%.2f"|format(promedio) }}</h3>
+                    <span class="ms-2 text-muted small text-nowrap">gal/hr</span>
+                </div>
+                <i class="bi bi-graph-up text-primary opacity-25 position-absolute end-0 bottom-0 m-2 fs-1"></i>
+            </div>
+        </div>
+    </div>
+
+    <!-- Consumo Total -->
+    <div class="col-md-4 col-lg-2">
+        <div class="card border-0 shadow-sm h-100">
+            <div class="card-body p-3 text-center">
+                <div class="avatar-sm bg-info-subtle text-info rounded-circle mx-auto mb-2 d-flex align-items-center justify-content-center" style="width: 40px; height: 40px;">
+                    <i class="bi bi-fuel-pump-fill"></i>
+                </div>
+                <div class="text-muted small fw-bold">CONSUMO TOTAL</div>
+                <h3 class="fw-bold mb-0 text-info">{{ total_consumo }} <small class="fs-6">gls</small></h3>
+            </div>
+        </div>
+    </div>
+
+    <!-- Horas Totales -->
+    <div class="col-md-4 col-lg-2">
+        <div class="card border-0 shadow-sm h-100">
+            <div class="card-body p-3 text-center">
+                <div class="avatar-sm bg-secondary-subtle text-secondary rounded-circle mx-auto mb-2 d-flex align-items-center justify-content-center" style="width: 40px; height: 40px;">
+                    <i class="bi bi-hourglass-split"></i>
+                </div>
+                <div class="text-muted small fw-bold">HORAS/KM</div>
+                <h3 class="fw-bold mb-0">{{ total_recorrido }}</h3>
+            </div>
+        </div>
+    </div>
+
+    <!-- % Bajo (ALERTA) -->
+    <div class="col-md-4 col-lg-2">
+        <div class="card border-0 shadow-sm h-100 bg-danger-subtle border border-danger">
+            <div class="card-body p-3 text-center">
+                <div class="text-danger small fw-bold">ALERTA % BAJO Rendimientos</div>
+                <h3 class="fw-bold mb-0 text-danger">{{ porcentaje_bajo }}%</h3>
+                <div class="progress mt-2" style="height: 5px;">
+                    <div class="progress-bar bg-danger" role="progressbar" style="width: {{ porcentaje_bajo }}%"></div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Último Rendimiento -->
+    <div class="col-md-4 col-lg-2">
+        <div class="card border-0 shadow-sm h-100">
+            <div class="card-body p-3 text-center">
+                <div class="text-muted small fw-bold">ÚLTIMO REGISTRO</div>
+                <h3 class="fw-bold mb-0 text-dark">{{ ultimo }}</h3>
+                <span class="badge bg-light text-dark border small mt-1">Reciente</span>
+            </div>
+        </div>
+    </div>
+
+    <!-- Tanque Lleno -->
+    <div class="col-md-4 col-lg-2">
+        <div class="card border-0 shadow-sm h-100 bg-primary text-white">
+            <div class="card-body p-3 text-center">
+                <div class="text-white-50 small fw-bold">TANQUES LLENOS</div>
+                <h3 class="fw-bold mb-0">{{ tanque_lleno }}</h3>
+                <i class="bi bi-check-all"></i>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- GRÁFICOS -->
+<div class="row mt-4 g-4">
+    <div class="col-lg-6">
+        <div class="card border-0 shadow-sm p-4">
+            <div class="d-flex justify-content-between align-items-center mb-3">
+                <h6 class="fw-bold mb-0"><i class="bi bi-bar-chart me-2"></i>Rendimiento por Vehículo</h6>
+                <button class="btn btn-sm btn-outline-light text-dark border-0"><i class="bi bi-three-dots"></i></button>
+            </div>
+            <div style="height: 300px;">
+                <canvas id="vehiculoChart"></canvas>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-lg-6">
+        <div class="card border-0 shadow-sm p-4">
+            <div class="d-flex justify-content-between align-items-center mb-3">
+                <h6 class="fw-bold mb-0"><i class="bi bi-pie-chart me-2"></i>Distribución por Proyecto</h6>
+                <button class="btn btn-sm btn-outline-light text-dark border-0"><i class="bi bi-three-dots"></i></button>
+            </div>
+            <div style="height: 300px;">
+                <canvas id="proyectoChart"></canvas>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- TABLA DETALLE -->
+<div class="card border-0 shadow-sm mt-4 overflow-hidden">
+    <div class="card-header bg-white py-3 border-0">
+        <h6 class="fw-bold mb-0"><i class="bi bi-list-check me-2 text-primary"></i>Detalle de Rendimientos Analizados</h6>
+    </div>
+    <div class="card-body p-0">
+        <div class="table-responsive">
+            <table id="tablaRendimientos" class="table table-hover align-middle mb-0">
+                <thead class="bg-light">
+                    <tr>
+                        <th class="ps-4">Fecha</th>
+                        <th>Vehículo / Equipo</th>
+                        <th class="text-center">Consumo (Gls)</th>
+                        <th class="text-center">Recorrido (H/Km)</th>
+                        <th class="text-end">Rendimiento (gal/hr)</th>
+                        <th class="text-center pe-4">Estado</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for r in lista %}
+                    <tr>
+                        <td class="ps-4 text-muted small">{{ r.fecha.strftime("%d/%m/%Y") }}</td>
+                        <td class="fw-bold text-dark">{{ r.vehiculo.nombre }}</td>
+                        <td class="text-center fw-semibold text-secondary">{{ r.consumo_total }}</td>
+                        <td class="text-center fw-semibold text-secondary">{{ r.recorrido_total }}</td>
+                        <td class="text-end fw-bold fs-6">
+                            {{ "%.2f"|format(r.rendimiento_calculado) }}
+                        </td>
+                        <td class="text-center pe-4">
+                            {% if r.estado == "BAJO" %}
+                            <span class="badge bg-danger-subtle text-danger border border-danger-subtle rounded-pill px-3">
+                                <i class="bi bi-arrow-down-short"></i> BAJO
+                            </span>
+                            {% elif r.estado == "ALTO" %}
+                            <span class="badge bg-warning-subtle text-warning-emphasis border border-warning-subtle rounded-pill px-3">
+                                <i class="bi bi-exclamation-triangle"></i> ALTO
+                            </span>
+                            {% else %}
+                            <span class="badge bg-success-subtle text-success border border-success-subtle rounded-pill px-3">
+                                <i class="bi bi-check-circle"></i> ÓPTIMO
+                            </span>
+                            {% endif %}
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
+
+<!-- CHART JS -->
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+<script>
+    const vehiculos = {{ por_vehiculo | map(attribute = 0) | list | tojson }};
+    const vehData = {{ por_vehiculo | map(attribute = 1) | list | tojson }};
+
+    const proyectos = {{ por_proyecto | map(attribute = 0) | list | tojson }};
+    const proyData = {{ por_proyecto | map(attribute = 1) | list | tojson }};
+
+    new Chart(document.getElementById("vehiculoChart"), {
+        type: "bar",
+        data: {
+            labels: vehiculos,
+            datasets: [{ label: "Rendimiento", data: vehData }]
+        }
+    });
+
+    new Chart(document.getElementById("proyectoChart"), {
+        type: "bar",
+        data: {
+            labels: proyectos,
+            datasets: [{ label: "Rendimiento", data: proyData }]
+        }
+    });
+</script>
+
+<script>
+$(document).ready(function () {
+
+    $('#tablaRendimientos').DataTable({
+
+        pageLength: 10,  // paginación automática
+        responsive: true,
+
+        language: {
+            search: "🔍 Buscar:",
+            lengthMenu: "Mostrar _MENU_ registros",
+            info: "Mostrando _START_ a _END_ de _TOTAL_ registros",
+            paginate: {
+                previous: "Anterior",
+                next: "Siguiente"
+            },
+            zeroRecords: "No se encontraron resultados"
+        }
+
+    });
+
+});
+</script>
+
+{% endblock %}

@@ -1,0 +1,197 @@
+<!DOCTYPE html>
+<html lang="es">
+
+<head>
+    <meta charset="UTF-8">
+    <title>{% block title %}Combustible{% endblock %}</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+
+    <!-- Bootstrap -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+
+    <!-- Icons -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.1/font/bootstrap-icons.css" rel="stylesheet">
+    <!-- CSS -->
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/styles.css') }}">
+
+    <!-- DataTables -->
+    <link rel="stylesheet" href="https://cdn.datatables.net/1.13.6/css/dataTables.bootstrap5.min.css">
+
+    <script src="https://code.jquery.com/jquery-3.7.1.min.js"></script>
+    <script src="https://cdn.datatables.net/1.13.6/js/jquery.dataTables.min.js"></script>
+    <script src="https://cdn.datatables.net/1.13.6/js/dataTables.bootstrap5.min.js"></script>
+</head>
+
+<body>
+
+    {% if current_user.is_authenticated %}
+
+    <!-- SIDEBAR -->
+    <div class="sidebar" id="sidebar">
+
+        <h4 class="text-center text-white mb-4 fw-bold">
+            <i class="bi bi-fuel-pump-fill text-warning me-2"></i>Combustible
+        </h4>
+
+        <a href="{{ url_for('index') }}">
+            <i class="bi bi-speedometer2"></i> Dashboard
+        </a>
+
+        <hr>
+
+        <small class="px-3 text-secondary">Maestro</small>
+
+        <a href="{{ url_for('usuarios_list') }}">
+            <i class="bi bi-people"></i> Usuarios
+        </a>
+
+        <a href="{{ url_for('roles_list') }}">
+            <i class="bi bi-shield-lock"></i> Roles
+        </a>
+
+        <hr>
+
+        <small class="px-3 text-secondary">Inventario</small>
+        <a href="{{ url_for('proyectos_list') }}"> 
+            <i class="bi bi-kanban me-2"></i>Proyectos 
+        </a>
+
+        <a href="{{ url_for('vehiculos_list') }}">
+            <i class="bi bi-truck me-2 "></i>Vehiculos
+        </a>
+        <a href="{{ url_for('operadores_list') }}">
+            <i class="bi bi-person-badge me-2 "></i> Operadores
+        </a>
+
+        <a href="{{ url_for('tanques_list') }}">
+            <i class="bi bi-tags"></i> Tanques
+        </a>
+
+        <hr>
+
+        <small class="px-3 text-secondary">Kardex</small>
+
+        <a href="{{ url_for('kardex_list') }}">
+            <i class="bi bi-fuel-pump-fill me-2"></i> Kardex
+        </a>
+
+        <a href="{{ url_for('rendimiento_list') }}">
+            <i class=" bi bi-speedometer2 me-2"></i> Rendimiento
+        </a>
+
+        <small class="px-3 text-secondary">Reportes</small>
+
+        <a href="{{ url_for('reporte_rendimiento') }}">
+            <i class="bi bi-bar-chart-line me-2"></i> Reporte Rendimiento
+        </a>
+    </div>
+
+    <!-- OVERLAY MOBILE -->
+    <div class="overlay" id="overlay" onclick="closeSidebar()"></div>
+
+    <!-- CONTENT -->
+    <div class="content" id="content">
+
+        <nav class="navbar shadow-sm mb-4 px-3 d-flex align-items-center">
+
+            <!-- BOTÓN MENÚ -->
+            <button class="btn btn-outline-primary btn-sm" onclick="toggleSidebar()">
+                <i class="bi bi-list"></i>
+            </button>
+
+            <!-- USER -->
+            <div class="ms-auto d-flex align-items-center gap-3">
+
+                <!-- Usuario -->
+                <span class="fw-semibold">
+                    <i class="bi bi-person-circle"></i> {{ current_user.full_name }}
+                </span>
+
+                <!-- Dark mode -->
+                <button id="btnDarkMode" class="btn btn-sm btn-outline-secondary">
+                    <i class="bi bi-moon-fill"></i>
+                </button>
+                <!-- Logout -->
+                <a href="{{ url_for('logout') }}" class="btn btn-sm btn-outline-danger" title="Cerrar sesión">
+                    <i class="bi bi-box-arrow-right"></i>
+                </a>
+
+            </div>
+
+        </nav>
+
+        {% else %}
+
+        <div class="login-page">
+
+            {% endif %}
+
+            <!-- MENSAJES FLASH -->
+            {% with messages = get_flashed_messages(with_categories=true) %}
+            {% if messages %}
+            <div class="container mt-2">
+                {% for category, message in messages %}
+                <div class="alert alert-{{ category }} alert-dismissible fade show" role="alert">
+                    {{ message }}
+                    <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+                </div>
+                {% endfor %}
+            </div>
+            {% endif %}
+            {% endwith %}
+            <!-- CONTENIDO -->
+            {% block content %}{% endblock %}
+
+            {% if current_user.is_authenticated %}
+        </div> <!-- content -->
+        {% else %}
+    </div> <!-- login-page -->
+    {% endif %}
+
+    <!-- JS -->
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+    <!-- app.js -->
+    <script src="{{ url_for('static', filename='js/app.js') }}"></script>
+
+    <script>
+        // ===============================
+        // SIDEBAR RESPONSIVE
+        // ===============================
+        function toggleSidebar() {
+            const sidebar = document.getElementById('sidebar');
+            const overlay = document.getElementById('overlay');
+            const content = document.getElementById('content');
+
+            if (window.innerWidth <= 768) {
+                // 📱 MOBILE
+                sidebar.classList.toggle('show');
+                overlay.classList.toggle('show');
+            } else {
+                // 💻 DESKTOP
+                sidebar.classList.toggle('collapsed');
+                content.classList.toggle('collapsed');
+            }
+        }
+
+        function closeSidebar() {
+            document.getElementById('sidebar').classList.remove('show');
+            document.getElementById('overlay').classList.remove('show');
+        }
+
+        // ===============================
+        // CERRAR SIDEBAR AL HACER CLICK
+        // ===============================
+        document.querySelectorAll('.sidebar a').forEach(link => {
+            link.addEventListener('click', () => {
+                if (window.innerWidth <= 768) {
+                    closeSidebar();
+                }
+            });
+        });
+
+
+    </script>
+
+</body>
+
+</html>

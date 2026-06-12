@@ -1,0 +1,259 @@
+{% extends "base.html" %}
+{% block title %}Kardex{% endblock %}
+
+{% block content %}
+
+{% set puede_crear = current_user.is_authenticated and current_user.has_permission('kardex.crear') %}
+
+<!-- HEADER -->
+<div class="d-flex justify-content-between align-items-center mb-4 py-2">
+    <div>
+        <h3 class="fw-bold mb-0">
+            <i class="bi bi-fuel-pump-fill me-2 text-primary"></i>Kardex de Combustible
+        </h3>
+        <p class="text-muted small mb-0">Historial detallado de ingresos y despachos</p>
+    </div>
+
+    {% if puede_crear %}
+    <button class="btn btn-primary btn-lg shadow-sm d-flex align-items-center" data-bs-toggle="modal"
+        data-bs-target="#modalNuevo">
+        <i class="bi bi-plus-circle me-2"></i> Registrar Movimiento
+    </button>
+    {% endif %}
+</div>
+
+<!-- TABLA -->
+<div class="card border-0 shadow-sm overflow-hidden">
+    <div class="card-body p-0">
+        <div class="table-responsive">
+            <table class="table table-hover align-middle mb-0 datatable">
+                <thead class="bg-light text-secondary">
+                    <tr>
+                        <th class="ps-4 py-3 text-uppercase small fw-bold">Fecha / Hora</th>
+                        <th class="py-3 text-uppercase small fw-bold">Operación</th>
+                        <th class="py-3 text-uppercase small fw-bold">Vehículo / Equipo</th>
+                        <th class="py-3 text-uppercase small fw-bold">Origen (Tanque)</th>
+                        <th class="py-3 text-uppercase small fw-bold">Responsable</th>
+                        <th class="py-3 text-uppercase small fw-bold text-end">Cantidad</th>
+                        <th class="py-3 text-uppercase small fw-bold text-center">Horómetro (I-F)</th>
+                        <th class="py-3 text-uppercase small fw-bold text-center">Doc/Parte</th>
+                        <th class="py-3 text-uppercase small fw-bold pe-4">Obs.</th>
+                    </tr>
+                </thead>
+
+                <tbody>
+                    {% for k in lista %}
+                    <tr class="{% if k.tipo == 'ENTRADA' %}table-success-subtle{% endif %}">
+                        <td class="ps-4">
+                            <div class="small fw-bold">{{ k.fecha.strftime("%d/%m/%Y") }}</div>
+                            <div class="text-muted" style="font-size: 0.75rem;">{{ k.fecha.strftime("%H:%M") }} hrs
+                            </div>
+                        </td>
+                        <td>
+                            <span class="badge rounded-pill px-3 
+                                {% if k.tipo == 'ENTRADA' %}bg-success
+                                {% elif k.tipo == 'SALIDA' %}bg-danger
+                                {% else %}bg-info text-dark{% endif %}">
+                                <i
+                                    class="bi {% if k.tipo == 'ENTRADA' %}bi-arrow-down-left{% elif k.tipo == 'SALIDA' %}bi-arrow-up-right{% else %}bi-gear{% endif %} me-1"></i>
+                                {{ k.tipo }}
+                            </span>
+                        </td>
+                        <td>
+                            <div class="fw-semibold">{{ k.vehiculo.nombre if k.vehiculo else '-' }}</div>
+                            {% if k.tanque_lleno %}
+                            <span class="badge bg-primary-subtle text-primary x-small"
+                                style="font-size: 0.65rem;">FULL</span>
+                            {% endif %}
+                        </td>
+                        <td>
+                            <span class="text-secondary"><i class="bi bi-moisture me-1"></i>{{ k.tanque.nombre if
+                                k.tanque else '-' }}</span>
+                        </td>
+                        <td class="small text-truncate" style="max-width: 120px;">
+                            {{ k.operador.nombre if k.operador else '-' }}
+                        </td>
+                        <td class="text-end">
+                            <span
+                                class="fw-bold fs-6 {% if k.tipo == 'SALIDA' %}text-danger{% else %}text-success{% endif %}">
+                                {{ k.cantidad }}
+                            </span>
+                            <span class="text-muted small"> gls</span>
+                        </td>
+                        <td class="text-center">
+                            {% if k.horometro_inicial %}
+                            <div class="badge bg-light text-dark border fw-normal">
+                                {{ k.horometro_inicial }} <i class="bi bi-arrow-right text-muted mx-1"></i> {{
+                                k.horometro_final }}
+                            </div>
+                            {% else %}
+                            <span class="text-muted">-</span>
+                            {% endif %}
+                        </td>
+                        <td class="text-center">
+                            <span class="badge bg-dark-subtle text-dark fw-medium">{{ k.parte_diario or '-' }}</span>
+                        </td>
+                        <td class="pe-4">
+                            {% if k.observacion %}
+                            <button type="button" class="btn btn-sm btn-link p-0 text-secondary"
+                                data-bs-toggle="tooltip" title="{{ k.observacion }}">
+                                <i class="bi bi-chat-dots fs-5"></i>
+                            </button>
+                            {% else %}
+                            -
+                            {% endif %}
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
+<!-- ================= MODAL KARDEX OPTIMIZADO ================= -->
+<div class="modal fade" id="modalNuevo" tabindex="-1" aria-labelledby="modalNuevoLabel" aria-hidden="true">
+    <div class="modal-dialog modal-lg modal-dialog-centered">
+        <div class="modal-content shadow-lg border-0">
+
+            <form method="POST" action="{{ url_for('kardex_nuevo') }}" id="formKardex">
+
+                <div class="modal-header text-white">
+                    <h5 class="modal-title d-flex align-items-center" id="modalNuevoLabel">
+                        <i class="bi bi-fuel-pump me-2"></i> Registrar Movimiento de Combustible
+                    </h5>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"
+                        aria-label="Close"></button>
+                </div>
+
+                <div class="modal-body p-4">
+
+                    <!-- TIPO DE MOVIMIENTO (DESTACADO) -->
+                    <div class="mb-4">
+                        <label class="form-label fw-bold text-uppercase small text-secondary">Tipo de Operación</label>
+                        <select name="tipo" id="tipo" class="form-select form-select-lg border-primary" required>
+                            <option value="" disabled selected>Seleccione el tipo...</option>
+                            <option value="ENTRADA" class="text-success fw-bold">📥 COMPRA (Compra=>Tanque gral)
+                            </option>
+                            <option value="SALIDA" class="text-danger fw-bold">📤 CONSUMO (Abastecimiento=>Vehículo)
+                            </option>
+                            <option value="OPERACION" class="text-primary fw-bold">⚙️ OPERACIÓN (Uso Interno)</option>
+                        </select>
+                    </div>
+
+                    <div class="row g-3">
+                        <!-- ORIGEN: TANQUE -->
+                        <div class="col-md-6">
+                            <label class="form-label fw-semibold">Tanque de Origen</label>
+                            <div class="input-group">
+                                <span class="input-group-text bg-white"><i class="bi bi-moisture text-info"></i></span>
+                                <select name="tanque_id" id="tanque" class="form-select">
+                                    {% for t in tanques %}
+                                    <option value="{{ t.id }}" data-stock="{{ t.stock_actual }}" {% if loop.first
+                                        %}selected{% endif %}>
+                                        {{ t.nombre }} (Disponible: {{ t.stock_actual }} Gls)
+                                    </option>
+                                    {% endfor %}
+                                </select>
+                            </div>
+                        </div>
+
+                        <!-- DESTINO: VEHÍCULO -->
+                        <div class="col-md-6">
+                            <label class="form-label fw-semibold">Vehículo / Maquinaria</label>
+                            <div class="input-group">
+                                <span class="input-group-text bg-white"><i class="bi bi-truck"></i></span>
+                                <select name="vehiculo_id" id="vehiculo" class="form-select">
+                                    <option value="">Seleccione Vehículo</option>
+                                    {% for v in vehiculos %}
+                                    <option value="{{ v.id }}">{{ v.nombre }}</option>
+                                    {% endfor %}
+                                </select>
+                            </div>
+                        </div>
+
+                        <!-- OPERADOR -->
+                        <div class="col-md-6">
+                            <label class="form-label fw-semibold">Responsable / Operador</label>
+                            <select name="operador_id" class="form-select">
+                                <option value="">Seleccione Operador</option>
+                                {% for o in operadores %}
+                                <option value="{{ o.id }}">{{ o.nombre }}</option>
+                                {% endfor %}
+                            </select>
+                        </div>
+
+                        <!-- CANTIDAD -->
+                        <div class="col-md-6">
+                            <label class="form-label fw-semibold text-primary">Cantidad a Despachar</label>
+                            <div class="input-group">
+                                <input type="number" step="0.01" name="cantidad" id="cantidad"
+                                    class="form-control form-control-lg border-primary" placeholder="0.00">
+                                <span class="input-group-text bg-primary text-white">Galones</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <hr class="my-4 opacity-25">
+
+                    <!-- SECCIÓN MÉTRICAS: HORÓMETROS -->
+                    <div class="row g-3 bg-light p-3 rounded border">
+                        <div class="col-md-6">
+                            <label class="form-label small fw-bold">Horómetro anterior</label>
+                            <input type="hidden" name="horometro_inicial" id="horometro_inicial">
+                            <div class="form-control bg-secondary-subtle fw-mono" id="horometro_inicial_view">0.00</div>
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label small fw-bold">Horómetro de abastecimiento</label>
+                            <input type="number" step="0.01" name="horometro_final" id="horometro_final"
+                                class="form-control fw-mono" placeholder="0.00">
+                        </div>
+
+                        <div class="col-md-6">
+                            <label class="form-label small fw-bold">N° Parte Diario</label>
+                            <input type="text" name="parte_diario" class="form-control form-control-sm"
+                                placeholder="Ej: P-1025">
+                        </div>
+                        <div class="col-md-6 d-flex align-items-center justify-content-center">
+                            <div class="form-check form-switch mt-3">
+                                <input class="form-check-input" type="checkbox" name="tanque_lleno" id="tanque_lleno"
+                                    role="switch">
+                                <label class="form-check-label fw-bold" for="tanque_lleno text-primary">¿Tanque
+                                    Lleno?</label>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- OBSERVACIONES -->
+                    <div class="mt-3">
+                        <label class="form-label small fw-semibold text-muted">Observaciones Adicionales</label>
+                        <textarea name="observacion" class="form-control" rows="2"
+                            placeholder="Notas sobre el estado o incidencia..."></textarea>
+                    </div>
+
+                    <!-- ALERTA DINÁMICA -->
+                    <div class="alert alert-danger d-none mt-3 animate__animated animate__shakeX" id="alertStock"
+                        role="alert">
+                        <i class="bi bi-exclamation-triangle-fill me-2"></i> <span></span>
+                    </div>
+
+                </div>
+
+                <div class="modal-footer bg-light px-4">
+                    <button type="button" class="btn btn-link text-muted" data-bs-dismiss="modal">Cancelar</button>
+                    <button id="btnGuardar" type="submit" class="btn btn-success btn-lg px-5 shadow-sm fw-bold">
+                        <i class="bi bi-check-circle me-1"></i> Procesar Movimiento
+                    </button>
+                </div>
+
+            </form>
+
+        </div>
+    </div>
+</div>
+
+
+<script src="{{ url_for('static', filename='js/kardex.js') }}"></script>
+
+
+{% endblock %}

@@ -1,0 +1,248 @@
+{% extends "base.html" %}
+{% block title %}Vehículos{% endblock %}
+
+{% block content %}
+
+{% set puede_crear = current_user.is_authenticated and current_user.has_permission('vehiculos.crear') %}
+{% set puede_editar = current_user.is_authenticated and current_user.has_permission('vehiculos.editar') %}
+{% set puede_eliminar = current_user.is_authenticated and current_user.has_permission('vehiculos.eliminar') %}
+
+<!-- HEADER -->
+<div class="d-flex justify-content-between align-items-center mb-4 py-2">
+    <div>
+        <h3 class="fw-bold mb-0">
+            <i class="bi bi-truck me-2 text-primary"></i>Gestión de Vehículos
+        </h3>
+        <p class="text-muted small mb-0">Administración de flota y maquinaria pesada</p>
+    </div>
+
+    {% if puede_crear %}
+    <button class="btn btn-primary btn-lg shadow-sm d-flex align-items-center" data-bs-toggle="modal" data-bs-target="#modalNuevoVehiculo">
+        <i class="bi bi-plus-lg me-2"></i> Nuevo Vehículo
+    </button>
+    {% endif %}
+</div>
+
+<!-- TABLA -->
+<div class="card border-0 shadow-sm overflow-hidden">
+    <div class="card-body p-0">
+        <div class="table-responsive">
+            <table class="table table-hover align-middle mb-0 datatable">
+                <thead class="bg-light text-secondary">
+                    <tr>
+                        <th class="ps-4 py-3 text-uppercase small fw-bold" style="width: 80px;">ID</th>
+                        <th class="py-3 text-uppercase small fw-bold">Equipo / Nombre</th>
+                        <th class="py-3 text-uppercase small fw-bold">Placa / ID</th>
+                        <th class="py-3 text-uppercase small fw-bold">Tipo</th>
+                        <th class="py-3 text-uppercase small fw-bold">Rendimiento</th>
+                        <th class="py-3 text-uppercase small fw-bold">Proyecto</th>
+                        <th class="py-3 text-uppercase small fw-bold text-center">Acciones</th>
+                    </tr>
+                </thead>
+
+                <tbody>
+                    {% for v in lista %}
+                    <tr>
+                        <td class="ps-4 text-muted">#{{ v.id }}</td>
+                        <td>
+                            <div class="fw-bold text-dark">{{ v.nombre }}</div>
+                            <span class="text-muted x-small" style="font-size: 0.75rem;">Actualizado recientemente</span>
+                        </td>
+                        <td>
+                            <span class="badge bg-light text-dark border fw-medium px-2 py-1">
+                                <i class="bi bi-tag-fill me-1 text-secondary"></i>{{ v.placa or 'S/P' }}
+                            </span>
+                        </td>
+                        <td>
+                            <span class="text-secondary small">{{ v.tipo or 'No definido' }}</span>
+                        </td>
+                        <td>
+                            <div class="d-flex align-items-center">
+                                <span class="fw-semibold text-primary">{{ v.rendimiento_promedio }}</span>
+                                <span class="ms-1 text-muted small">gal/hr</span>
+                            </div>
+                        </td>
+                        <td>
+                            <div class="d-flex align-items-center">
+                                <i class="bi bi-folder2-open me-2 text-warning"></i>
+                                <span class="text-truncate" style="max-width: 150px;">{{ v.proyecto_id }}</span>
+                            </div>
+                        </td>
+                        <td class="text-center pe-4">
+                            <div class="btn-group shadow-sm">
+                                {% if puede_editar %}
+                                <button class="btn btn-outline-warning btn-sm" 
+                                        data-bs-toggle="modal" 
+                                        data-bs-target="#modalEditar{{ v.id }}"
+                                        title="Editar detalles">
+                                    <i class="bi bi-pencil"></i>
+                                </button>
+                                {% endif %}
+
+                                {% if puede_eliminar %}
+                                <form method="POST" action="{{ url_for('vehiculos_eliminar', id=v.id) }}" class="d-inline">
+                                    <button type="button" class="btn btn-outline-danger btn-sm" 
+                                            onclick="confirmarEliminacion(this.closest('form'))"
+                                            title="Eliminar registro">
+                                        <i class="bi bi-trash"></i>
+                                    </button>
+                                </form>
+                                {% endif %}
+                            </div>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
+
+<!-- ================= EDITAR ================= -->
+{% for v in lista %}
+<div class="modal fade" id="modalEditar{{ v.id }}" tabindex="-1" aria-labelledby="modalEditarLabel{{ v.id }}" aria-hidden="true">
+    <div class="modal-dialog modal-lg modal-dialog-centered">
+        <div class="modal-content shadow-lg border-0">
+
+            <form method="POST" action="{{ url_for('vehiculos_editar', id=v.id) }}">
+
+                <div class="modal-header bg-light">
+                    <h5 class="modal-title d-flex align-items-center" id="modalEditarLabel{{ v.id }}">
+                        <i class="bi bi-pencil-square me-2 text-warning"></i> Editar Vehículo: <span class="ms-2 badge bg-dark-subtle text-dark">{{ v.placa }}</span>
+                    </h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+
+                <div class="modal-body p-4">
+                    <div class="row g-3">
+                        <!-- Proyecto -->
+                        <div class="col-md-12 mb-2">
+                            <label class="form-label fw-bold text-secondary small text-uppercase">Proyecto Asignado</label>
+                            <select name="proyecto_id" class="form-select border-warning-subtle shadow-sm">
+                                {% for p in proyectos %}
+                                <option value="{{ p.id }}" {% if p.id == v.proyecto_id %}selected{% endif %}>
+                                    {{ p.nombre }}
+                                </option>
+                                {% endfor %}
+                            </select>
+                        </div>
+
+                        <hr class="text-muted opacity-25">
+
+                        <!-- Datos del Vehículo -->
+                        <div class="col-md-8">
+                            <label class="form-label fw-semibold">Nombre del Equipo</label>
+                            <input type="text" name="nombre" class="form-control" value="{{ v.nombre }}" required>
+                        </div>
+
+                        <div class="col-md-4">
+                            <label class="form-label fw-semibold">Placa</label>
+                            <input type="text" name="placa" class="form-control" value="{{ v.placa }}">
+                        </div>
+
+                        <div class="col-md-6">
+                            <label class="form-label fw-semibold">Tipo</label>
+                            <input type="text" name="tipo" class="form-control" value="{{ v.tipo }}">
+                        </div>
+
+                        <div class="col-md-6">
+                            <label class="form-label fw-semibold">Rendimiento Promedio</label>
+                            <div class="input-group">
+                                <input type="number" step="0.01" name="rendimiento_promedio" class="form-control" value="{{ v.rendimiento_promedio }}">
+                                <span class="input-group-text bg-light text-muted small">gal/hr</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="modal-footer bg-light border-top-0 px-4 pb-4">
+                    <button type="button" class="btn btn-outline-secondary px-4" data-bs-dismiss="modal">Cancelar</button>
+                    <button type="submit" class="btn btn-warning px-5 fw-bold shadow-sm">
+                        <i class="bi bi-check2-circle me-1"></i> Actualizar Cambios
+                    </button>
+                </div>
+
+            </form>
+
+        </div>
+    </div>
+</div>
+{% endfor %}
+
+{% if puede_crear %}
+<div class="modal fade" id="modalNuevoVehiculo" tabindex="-1" aria-labelledby="modalNuevoVehiculoLabel" aria-hidden="true">
+    <div class="modal-dialog modal-lg modal-dialog-centered">
+        <div class="modal-content shadow-lg border-0">
+            
+            <form method="POST" action="{{ url_for('vehiculos_nuevo') }}">
+                
+                <div class="modal-header bg-light">
+                    <h5 class="modal-title d-flex align-items-center" id="modalNuevoVehiculoLabel">
+                        <i class="bi bi-truck me-2 text-primary"></i> Registrar Nuevo Vehículo
+                    </h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+
+                <div class="modal-body p-4">
+                    <!-- Sección: Información del Proyecto -->
+                    <div class="mb-4">
+                        <label class="form-label fw-bold text-secondary small text-uppercase">Asignación</label>
+                        <select name="proyecto_id" class="form-select form-select-lg border-primary-subtle" required>
+                            <option value="" selected disabled>Seleccionar Proyecto...</option>
+                            {% for p in proyectos %}
+                            <option value="{{p.id}}">{{p.nombre}}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+
+                    <hr class="text-muted opacity-25">
+
+                    <!-- Sección: Datos Técnicos -->
+                    <div class="row g-3">
+                        <div class="col-md-8">
+                            <label class="form-label fw-semibold">Nombre del Equipo / Modelo</label>
+                            <input type="text" name="nombre" class="form-control" placeholder="Ej: Excavadora Caterpillar 320" required>
+                        </div>
+                        
+                        <div class="col-md-4">
+                            <label class="form-label fw-semibold">Placa / ID Interno</label>
+                            <input type="text" name="placa" class="form-control" placeholder="ABC-123">
+                        </div>
+
+                        <div class="col-md-6">
+                            <label class="form-label fw-semibold">Tipo de Vehículo</label>
+                            <input type="text" name="tipo" class="form-control" placeholder="Ej: Carga Pesada, Camioneta">
+                        </div>
+
+                        <div class="col-md-6">
+                            <label class="form-label fw-semibold">Rendimiento Estimado</label>
+                            <div class="input-group">
+                                <input type="number" step="0.01" name="rendimiento_promedio" class="form-control" placeholder="0.00">
+                                <span class="input-group-text bg-light text-muted">km/gal</span>
+                            </div>
+                            <div class="form-text small">Promedio de consumo sugerido.</div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="modal-footer bg-light border-top-0 px-4 pb-4">
+                    <button type="button" class="btn btn-outline-secondary px-4" data-bs-dismiss="modal">Cancelar</button>
+                    <button type="submit" class="btn btn-primary px-5 fw-bold shadow-sm">
+                        <i class="bi bi-save me-1"></i> Guardar Vehículo
+                    </button>
+                </div>
+
+            </form>
+
+        </div>
+    </div>
+</div>
+{% endif %}
+
+
+<!-- app.js -->
+<script src="{{ url_for('static', filename='js/vehiculos.js') }}"></script>
+
+
+{% endblock %}
