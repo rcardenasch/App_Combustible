@@ -20,7 +20,13 @@ from datetime import datetime,timedelta
 from sqlalchemy import text
 from openpyxl import Workbook
 import io
-from openpyxl.styles import PatternFill
+import pytz
+
+PERU_TZ = pytz.timezone("America/Lima")
+
+def now_lima():
+    return datetime.now(PERU_TZ).replace(tzinfo=None)
+
 
 # ------------------------
 # APP
@@ -916,7 +922,7 @@ def tanques_eliminar(id):
 @permission_required("kardex", "ver")
 def kardex_list():
 
-    fecha_actual = datetime.now().strftime("%Y-%m-%dT%H:%M")
+    fecha_actual = now_lima().strftime("%Y-%m-%dT%H:%M")
     return render_template(
         "kardex.html",
         lista=Kardex.query.order_by(Kardex.fecha.desc()).all(),
@@ -1048,9 +1054,9 @@ def kardex_nuevo():
                 "%Y-%m-%dT%H:%M"
             )
         else:
-            fecha_movimiento = datetime.now()
+            fecha_movimiento = now_lima()
 
-        if fecha_movimiento > datetime.now():
+        if fecha_movimiento > now_lima():
             flash(
                 "No puede registrar movimientos futuros",
                 "danger"
