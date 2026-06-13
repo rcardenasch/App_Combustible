@@ -5,7 +5,7 @@
 from flask import Flask, request, redirect, url_for, render_template, flash, jsonify,send_file
 from flask_login import LoginManager, login_user, logout_user, login_required, current_user
 from models import (db,Usuario, Role, Permission,Module,Proyecto,Vehiculo,Alerta,Operador,Kardex,Rendimiento,Tanque)
-
+from openpyxl.styles import PatternFill
 from config import Config
 from functools import wraps
 from flask import jsonify
@@ -219,8 +219,8 @@ def permission_required(modulo, accion):
 @app.route('/')
 @login_required
 def index():
-    #return redirect(url_for("dashboard"))
-    return redirect(url_for("rendimiento_list"))
+    return redirect(url_for("dashboard_gerencial"))
+    #return redirect(url_for("rendimiento_list"))
     
     
 
@@ -1044,6 +1044,21 @@ def kardex_nuevo():
                 flash("Cantidad inválida", "danger")
                 return redirect(url_for("kardex_list"))
 
+            stock_resultante = tanque.stock_actual + cantidad
+
+            if stock_resultante > tanque.capacidad:
+
+                disponible = tanque.capacidad - tanque.stock_actual
+
+                flash(
+                    f"Capacidad excedida. "
+                    f"Disponible: {disponible:.2f} gls. "
+                    f"Capacidad máxima: {tanque.capacidad:.2f} gls.",
+                    "danger"
+                )
+
+                return redirect(url_for("kardex_list"))
+
         # =========================
         # FECHA DEL MOVIMIENTO
         # =========================
@@ -1492,11 +1507,179 @@ def reporte_rendimientos_excel():
 @login_required
 def dashboard():
 
+    lista = Kardex.query.filter(
+        Kardex.tipo=="SALIDA"
+    ).order_by(
+        Kardex.fecha.desc()
+    ).all()
+
+    total_consumo = db.session.query(
+        func.sum(Kardex.cantidad)
+    ).filter(
+        Kardex.tipo=="SALIDA"
+    ).scalar() or 0
+
+    total_abastecimientos = Kardex.query.filter_by(
+        tipo="SALIDA"
+    ).count()
+
+    vehiculos_activos = db.session.query(
+        Kardex.vehiculo_id
+    ).filter(
+        Kardex.tipo=="SALIDA"
+    ).distinct().count()
+
+    consumo_promedio = round(
+        total_consumo / total_abastecimientos,
+        2
+    ) if total_abastecimientos else 0
+
+    por_vehiculo = db.session.query(
+        Vehiculo.nombre,
+        func.sum(Kardex.cantidad)
+    ).join(
+        Kardex,
+        Kardex.vehiculo_id == Vehiculo.id
+    ).filter(
+        Kardex.tipo=="SALIDA"
+    ).group_by(
+        Vehiculo.nombre
+    ).all()
+
+    por_operador = db.session.query(
+        Operador.nombre,
+        func.sum(Kardex.cantidad)
+    ).join(
+        Kardex,
+        Kardex.operador_id == Operador.id
+    ).filter(
+        Kardex.tipo=="SALIDA"
+    ).group_by(
+        Operador.nombre
+    ).all()
+
+    total_tanques = Tanque.query.count()
+    stock_total = db.session.query(
+        func.sum(Tanque.stock_actual)
+    ).scalar() or 0
+
     return render_template(
-        "dashboard.html"
+        "dashboard_operativo.html",
+        lista=lista,
+        total_consumo=round(total_consumo,2),
+        total_abastecimientos=total_abastecimientos,
+        vehiculos_activos=vehiculos_activos,
+        consumo_promedio=consumo_promedio,
+        por_vehiculo=por_vehiculo,
+        por_operador=por_operador,
+        total_tanques=total_tanques,
+        stock_total=stock_total
     )
 
+@app.route("/dashboard/gerencial")
+@login_required
+def dashboard_gerencial():
 
+    # ==========================
+    # KPI GENERALES
+    # ==========================
+
+    total_compras = db.session.query(
+        func.sum(Kardex.cantidad)
+    ).filter(
+        Kardex.tipo == "ENTRADA"
+    ).scalar() or 0
+
+    total_consumo = db.session.query(
+        func.sum(Kardex.cantidad)
+    ).filter(
+        Kardex.tipo == "SALIDA"
+    ).scalar() or 0
+
+    total_operaciones = Kardex.query.count()
+
+    stock_total = db.session.query(
+        func.sum(Tanque.stock_actual)
+    ).scalar() or 0
+
+    total_tanques = Tanque.query.count()
+
+    total_vehiculos = Vehiculo.query.count()
+
+    balance = total_compras - total_consumo
+
+    # ==========================
+    # COMPRAS VS CONSUMO
+    # ==========================
+
+    compras = Kardex.query.filter_by(
+        tipo="ENTRADA"
+    ).count()
+
+    consumos = Kardex.query.filter_by(
+        tipo="SALIDA"
+    ).count()
+
+    # ==========================
+    # TOP VEHICULOS
+    # ==========================
+
+    por_vehiculo = db.session.query(
+        Vehiculo.nombre,
+        func.sum(Kardex.cantidad)
+    ).join(
+        Kardex,
+        Kardex.vehiculo_id == Vehiculo.id
+    ).filter(
+        Kardex.tipo == "SALIDA"
+    ).group_by(
+        Vehiculo.nombre
+    ).all()
+
+    # ==========================
+    # TOP OPERADORES
+    # ==========================
+
+    por_operador = db.session.query(
+        Operador.nombre,
+        func.sum(Kardex.cantidad)
+    ).join(
+        Kardex,
+        Kardex.operador_id == Operador.id
+    ).filter(
+        Kardex.tipo == "SALIDA"
+    ).group_by(
+        Operador.nombre
+    ).all()
+
+    # ==========================
+    # ULTIMOS MOVIMIENTOS
+    # ==========================
+
+    movimientos = Kardex.query.order_by(
+        Kardex.fecha.desc()
+    ).limit(20).all()
+
+    return render_template(
+        "dashboard_gerencial.html",
+
+        total_compras=round(total_compras,2),
+        total_consumo=round(total_consumo,2),
+        stock_total=round(stock_total,2),
+        balance=round(balance,2),
+
+        total_tanques=total_tanques,
+        total_vehiculos=total_vehiculos,
+        total_operaciones=total_operaciones,
+
+        compras=compras,
+        consumos=consumos,
+
+        por_vehiculo=por_vehiculo,
+        por_operador=por_operador,
+
+        movimientos=movimientos
+    )
 
 if __name__ == "__main__":
     app.run(host="127.0.0.1", port=8007, debug=True)
