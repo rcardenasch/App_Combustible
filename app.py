@@ -1576,10 +1576,10 @@ def vista_reporte_rendimiento():
     return render_template(
         "reporte_rendimientos.html"
     )
+
 # ===================================================================================
 # Reporte Rendimiento Excel
 # ===================================================================================
-
 @app.route("/reportes/rendimientos/excel")
 @login_required
 @permission_required("rendimientos", "ver")
@@ -1645,11 +1645,17 @@ def reporte_rendimiento():
     # =========================
     # VEHICULOS
     # =========================
+    query = Vehiculo.query.filter(
+        Vehiculo.activo == True
+    )
 
-    vehiculos = Vehiculo.query.filter_by(
-        activo=True,
-        proyecto_id=current_user.proyecto_id
-    ).order_by(
+    if current_user.proyecto_id:
+
+        query = query.filter(
+            Vehiculo.proyecto_id == current_user.proyecto_id
+        )
+
+    vehiculos = query.order_by(
         Vehiculo.nombre
     ).all()
 
@@ -1698,6 +1704,7 @@ def reporte_rendimiento():
             consumos_dict[
                 (c.vehiculo_id, c.dia)
             ] = float(c.total or 0)
+        
 
     # =========================
     # CREAR EXCEL
