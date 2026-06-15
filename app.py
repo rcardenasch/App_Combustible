@@ -1576,7 +1576,7 @@ def registrar_carga():
 @app.route("/reportes/rendimientos/excel")
 @login_required
 @permission_required("rendimientos", "ver")
-def reporte_rendimientos_excel():
+def reporte_rendimiento():
 
     tipo = request.args.get("tipo")
     fecha_str = request.args.get("fecha")
