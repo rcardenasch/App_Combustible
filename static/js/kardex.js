@@ -155,3 +155,29 @@ function toggleCamposPorTipo() {
     }
 
 }
+let kardexIdEliminar = null;
+
+function confirmarAnulacion(id) {
+
+    kardexIdEliminar = id;
+
+    const modal = new bootstrap.Modal(
+        document.getElementById("modalAnular")
+    );
+
+    modal.show();
+}
+
+function ejecutarAnulacion() {
+
+    if (!kardexIdEliminar) return;
+
+    const form = document.createElement("form");
+
+    form.method = "POST";
+    form.action = `/kardex/anular/${kardexIdEliminar}`;
+
+    document.body.appendChild(form);
+
+    form.submit();
+}

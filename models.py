@@ -209,6 +209,11 @@ class Kardex(db.Model):
     operador_id = db.Column(db.Integer, db.ForeignKey("operadores.id"), nullable=True)
 
     operador = db.relationship("Operador")
+
+    activo = db.Column(db.Boolean,default=True)
+    fecha_anulacion = db.Column(db.DateTime)
+    anulado_por = db.Column(db.Integer,db.ForeignKey("usuarios.id"))
+    motivo_anulacion = db.Column(db.String(500))
 # =========================
 # RENDIMIENTO (AUDITORIA)
 # =========================

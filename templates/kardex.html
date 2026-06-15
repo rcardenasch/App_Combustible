@@ -4,6 +4,7 @@
 {% block content %}
 
 {% set puede_crear = current_user.is_authenticated and current_user.has_permission('kardex.crear') %}
+{% set puede_eliminar = current_user.is_authenticated and current_user.has_permission('kardex.eliminar') %}
 
 <!-- HEADER -->
 <div class="d-flex justify-content-between align-items-center mb-4 py-2">
@@ -38,6 +39,7 @@
                         <th class="py-3 text-uppercase small fw-bold text-center">Horómetro (I-F)</th>
                         <th class="py-3 text-uppercase small fw-bold text-center">Doc/Parte</th>
                         <th class="py-3 text-uppercase small fw-bold pe-4">Obs.</th>
+                        <th width="130">Acciones</th>
                     </tr>
                 </thead>
 
@@ -103,6 +105,15 @@
                             -
                             {% endif %}
                         </td>
+                        <td>
+
+                            {% if puede_eliminar %}
+                            <button class="btn btn-danger btn-sm" onclick="confirmarAnulacion({{ k.id }})">
+                                <i class="bi bi-trash"></i>
+                            </button>
+                            {% endif %}
+
+                        </td>
                     </tr>
                     {% endfor %}
                 </tbody>
@@ -126,27 +137,33 @@
                 </div>
 
                 <div class="modal-body p-4">
-                    
+
                     <!-- SECCIÓN PRINCIPAL: CONFIGURACIÓN DEL MOVIMIENTO -->
                     <div class="row g-3 mb-4">
                         <!-- FECHA DE MOVIMIENTO (Optimizado en cuadrícula) -->
                         <div class="col-md-6">
                             <label class="form-label fw-semibold">Fecha del Movimiento</label>
                             <div class="form-floating position-relative">
-                                <input type="datetime-local" name="fecha" class="form-control rounded-3" id="fechaMovimiento"
-                                    value="{{ fecha_actual }}" placeholder="Fecha del Movimiento">
-                                <label for="fechaMovimiento" class="fw-semibold text-secondary">Seleccione Fecha y Hora</label>
+                                <input type="datetime-local" name="fecha" class="form-control rounded-3"
+                                    id="fechaMovimiento" value="{{ fecha_actual }}" placeholder="Fecha del Movimiento">
+                                <label for="fechaMovimiento" class="fw-semibold text-secondary">Seleccione Fecha y
+                                    Hora</label>
                             </div>
                         </div>
 
                         <!-- TIPO DE MOVIMIENTO (Alineado con la fecha) -->
                         <div class="col-md-6">
-                            <label class="form-label fw-bold text-uppercase small text-secondary">Tipo de Operación</label>
-                            <select name="tipo" id="tipo" class="form-select form-select-lg border-primary" style="height: 58px;" required>
+                            <label class="form-label fw-bold text-uppercase small text-secondary">Tipo de
+                                Operación</label>
+                            <select name="tipo" id="tipo" class="form-select form-select-lg border-primary"
+                                style="height: 58px;" required>
                                 <option value="" disabled selected>Seleccione el tipo...</option>
-                                <option value="ENTRADA" class="text-success fw-bold">📥 COMPRA (Compra=>Tanque gral)</option>
-                                <option value="SALIDA" class="text-danger fw-bold">📤 CONSUMO (Abastecimiento=>Vehículo)</option>
-                                <option value="OPERACION" class="text-primary fw-bold">⚙️ OPERACIÓN (Uso Interno)</option>
+                                <option value="ENTRADA" class="text-success fw-bold">📥 COMPRA (Compra=>Tanque gral)
+                                </option>
+                                <option value="SALIDA" class="text-danger fw-bold">📤 CONSUMO (Abastecimiento=>Vehículo)
+                                </option>
+                                <option value="OPERACION" class="text-primary fw-bold">⚙️ OPERACIÓN (Uso Interno)
+                                </option>
                             </select>
                         </div>
                     </div>
@@ -160,7 +177,8 @@
                                 <span class="input-group-text bg-white"><i class="bi bi-moisture text-info"></i></span>
                                 <select name="tanque_id" id="tanque" class="form-select">
                                     {% for t in tanques %}
-                                    <option value="{{ t.id }}" data-stock="{{ t.stock_actual }}" {% if loop.first %}selected{% endif %}>
+                                    <option value="{{ t.id }}" data-stock="{{ t.stock_actual }}" {% if loop.first
+                                        %}selected{% endif %}>
                                         {{ t.nombre }} (Disponible: {{ t.stock_actual }} Gls)
                                     </option>
                                     {% endfor %}
@@ -257,7 +275,63 @@
     </div>
 </div>
 
+<!-- ================= MODAL CONFIMAR ANULACION ================= -->
+<div class="modal fade" id="modalAnular" tabindex="-1">
 
+    <div class="modal-dialog">
+
+        <div class="modal-content">
+
+            <div class="modal-header bg-danger text-white">
+
+                <h5 class="modal-title">
+                    Anular Movimiento
+                </h5>
+
+                <button
+                    type="button"
+                    class="btn-close btn-close-white"
+                    data-bs-dismiss="modal">
+                </button>
+
+            </div>
+
+            <div class="modal-body">
+
+                ¿Desea anular este movimiento?
+
+                <br><br>
+
+                <strong>
+                    Esta acción recalculará stocks,
+                    rendimientos y alertas.
+                </strong>
+
+            </div>
+
+            <div class="modal-footer">
+
+                <button
+                    type="button"
+                    class="btn btn-secondary"
+                    data-bs-dismiss="modal">
+                    Cancelar
+                </button>
+
+                <button
+                    type="button"
+                    class="btn btn-danger"
+                    onclick="ejecutarAnulacion()">
+                    Anular
+                </button>
+
+            </div>
+
+        </div>
+
+    </div>
+
+</div>
 
 <script src="{{ url_for('static', filename='js/kardex.js') }}"></script>
 

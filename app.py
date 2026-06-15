@@ -71,7 +71,7 @@ MODULOS = [
 
 ACCIONES = ["ver", "crear", "editar", "eliminar"]
 
-ACCIONES_KARDEX = ["ver","crear", "editar", "ajustar", "resetear"]
+ACCIONES_KARDEX = ["ver","crear", "editar","eliminar"]
 
 
 def now_utc():
@@ -925,7 +925,7 @@ def kardex_list():
     fecha_actual = now_lima().strftime("%Y-%m-%dT%H:%M")
     return render_template(
         "kardex.html",
-        lista=Kardex.query.order_by(Kardex.fecha.desc()).all(),
+        lista=Kardex.query.filter(Kardex.activo == True).order_by(Kardex.fecha.desc()).all(),
         vehiculos=Vehiculo.query.all(),
         tanques=Tanque.query.all(),
         operadores=Operador.query.all(),
@@ -953,7 +953,8 @@ def kardex_nuevo():
         existe = Kardex.query.filter(
             Kardex.vehiculo_id == vehiculo_id,
             Kardex.cantidad == cantidad,
-            Kardex.fecha >= hace_5_seg
+            Kardex.fecha >= hace_5_seg,
+            Kardex.activo == True
         ).first()
 
         if existe:
@@ -1014,7 +1015,8 @@ def kardex_nuevo():
 
             ultimo = Kardex.query.filter(
                 Kardex.vehiculo_id == vehiculo_id,
-                Kardex.horometro_final != None
+                Kardex.horometro_final != None,
+                Kardex.activo == True
             ).order_by(Kardex.fecha.desc()).first()
 
             if ultimo:
@@ -1120,10 +1122,12 @@ def kardex_nuevo():
         if tipo == "SALIDA" and tanque_lleno and vehiculo_id:
 
             anterior = Kardex.query.filter(
-                Kardex.vehiculo_id == vehiculo_id,
-                Kardex.tanque_lleno == True,
-                Kardex.id != nuevo.id
-            ).order_by(Kardex.fecha.desc()).first()
+            Kardex.vehiculo_id == vehiculo_id,
+            Kardex.tipo == "SALIDA",
+            Kardex.tanque_lleno == True,
+            Kardex.activo == True,
+            Kardex.fecha < nuevo.fecha).order_by(
+            Kardex.fecha.desc()).first()
 
             if anterior:
 
@@ -1135,6 +1139,8 @@ def kardex_nuevo():
                 consumo_total = db.session.query(func.sum(Kardex.cantidad)).filter(
                     Kardex.vehiculo_id == vehiculo_id,
                     Kardex.tipo == "SALIDA",
+                    Kardex.activo == True,
+                    Kardex.cantidad > 0,
                     Kardex.fecha > anterior.fecha,
                     Kardex.fecha <= nuevo.fecha
                 ).scalar() or 0
@@ -1148,6 +1154,10 @@ def kardex_nuevo():
 
                     if vehiculo and vehiculo.rendimiento_promedio:
                         prom = vehiculo.rendimiento_promedio
+
+                        # rendimiento_calculado = galones por hora
+                        # Menor valor = mejor rendimiento
+                        # Mayor valor = peor rendimiento
 
                         if rendimiento > prom * 1.2:
                             estado = "BAJO"   # 🔴 consume mucho (malo)
@@ -1188,11 +1198,215 @@ def kardex_nuevo():
 
     return redirect(url_for("kardex_list"))
 
+@app.route("/kardex/anular/<int:id>", methods=["POST"])
+@login_required
+@permission_required("kardex", "eliminar")
+def kardex_anular(id):
+
+    try:
+
+        mov = Kardex.query.get_or_404(id)
+
+        # ===================================
+        # YA ANULADO
+        # ===================================
+        if not mov.activo:
+
+            flash(
+                "Movimiento ya fue anulado",
+                "warning"
+            )
+
+            return redirect(
+                url_for("kardex_list")
+            )
+
+        tanque = mov.tanque
+
+        # ===================================
+        # REVERSAR STOCK
+        # ===================================
+        if mov.tipo == "ENTRADA":
+
+            nuevo_stock = tanque.stock_actual - mov.cantidad
+
+            if nuevo_stock < 0:
+
+                flash(
+                    "No se puede anular porque dejaría stock negativo.",
+                    "danger"
+                )
+
+                return redirect(
+                    url_for("kardex_list")
+                )
+
+            tanque.stock_actual = nuevo_stock
+
+        elif mov.tipo == "SALIDA":
+
+            tanque.stock_actual += mov.cantidad
+
+        # ===================================
+        # ELIMINAR RENDIMIENTOS GENERADOS
+        # ===================================
+        if hasattr(Rendimiento, "kardex_id"):
+
+            Rendimiento.query.filter(
+                Rendimiento.kardex_id == mov.id
+            ).delete(
+                synchronize_session=False
+            )
+
+        # ===================================
+        # ELIMINAR ALERTAS GENERADAS
+        # ===================================
+        if hasattr(Alerta, "kardex_id"):
+
+            Alerta.query.filter(
+                Alerta.kardex_id == mov.id
+            ).delete(
+                synchronize_session=False
+            )
+
+        # ===================================
+        # ANULACIÓN LÓGICA
+        # ===================================
+        mov.activo = False
+        mov.fecha_anulacion = now_lima()
+        mov.anulado_por = current_user.id
+
+        db.session.flush()
+
+        # ===================================
+        # RECALCULAR RENDIMIENTOS
+        # ===================================
+        if mov.vehiculo_id:
+
+            recalcular_rendimientos_vehiculo(
+                mov.vehiculo_id
+            )
+
+        db.session.commit()
+
+        flash(
+            "✅ Movimiento anulado correctamente",
+            "success"
+        )
+
+    except Exception as e:
+
+        db.session.rollback()
+
+        flash(
+            f"Error al anular: {str(e)}",
+            "danger"
+        )
+
+    return redirect(
+        url_for("kardex_list")
+    )
+
+def recalcular_rendimientos_vehiculo(vehiculo_id):
+
+    # Eliminar cálculos anteriores
+    Rendimiento.query.filter_by(
+        vehiculo_id=vehiculo_id
+    ).delete()
+
+    Alerta.query.filter_by(
+        vehiculo_id=vehiculo_id
+    ).delete()
+
+    # Obtener todos los tanque lleno activos
+    abastecimientos = Kardex.query.filter(
+        Kardex.vehiculo_id == vehiculo_id,
+        Kardex.tipo == "SALIDA",
+        Kardex.tanque_lleno == True,
+        Kardex.activo == True,
+        Kardex.cantidad > 0
+    ).order_by(
+        Kardex.fecha.asc()
+    ).all()
+
+    # Necesitamos pares
+    if len(abastecimientos) < 2:
+        return
+
+    for i in range(1, len(abastecimientos)):
+
+        anterior = abastecimientos[i - 1]
+        actual = abastecimientos[i]
+
+        h_ini = anterior.horometro_final or 0
+        h_fin = actual.horometro_final or 0
+
+        recorrido_total = h_fin - h_ini
+
+        consumo_total = db.session.query(
+            func.sum(Kardex.cantidad)
+        ).filter(
+            Kardex.vehiculo_id == vehiculo_id,
+            Kardex.tipo == "SALIDA",
+            Kardex.activo == True,
+            Kardex.cantidad > 0,
+            Kardex.fecha > anterior.fecha,
+            Kardex.fecha <= actual.fecha
+        ).scalar() or 0
+
+        if consumo_total <= 0:
+            continue
+
+        if recorrido_total <= 0:
+            continue
+
+        rendimiento = consumo_total / recorrido_total
+
+        vehiculo = Vehiculo.query.get(
+            vehiculo_id
+        )
+
+        estado = "NORMAL"
+
+        if vehiculo and vehiculo.rendimiento_promedio:
+
+            prom = vehiculo.rendimiento_promedio
+
+            if rendimiento > prom * 1.2:
+                estado = "BAJO"
+
+            elif rendimiento < prom * 0.8:
+                estado = "ALTO"
+
+        nuevo_rend = Rendimiento(
+            vehiculo_id=vehiculo_id,
+            consumo_total=consumo_total,
+            recorrido_total=recorrido_total,
+            rendimiento_calculado=rendimiento,
+            estado=estado,
+            tipo_control="TANQUE_LLENO",
+            observacion="Recalculado automáticamente",
+            horometro_abastecimiento_inicial=h_ini,
+            horometro_abastecimiento_final=h_fin
+        )
+
+        db.session.add(nuevo_rend)
+
+        if estado == "BAJO":
+
+            alerta = Alerta(
+                tipo="RENDIMIENTO_BAJO",
+                mensaje=f"Vehículo {vehiculo_id} bajo rendimiento",
+                vehiculo_id=vehiculo_id
+            )
+
+            db.session.add(alerta)
+
 @app.route("/kardex/ultimo_horometro/<int:vehiculo_id>")
 @login_required
 def ultimo_horometro(vehiculo_id):
 
-    ultimo = Kardex.query.filter_by(vehiculo_id=vehiculo_id)\
+    ultimo = Kardex.query.filter_by(vehiculo_id=vehiculo_id,activo=True)\
         .order_by(Kardex.fecha.desc()).first()
 
     return {
@@ -1281,6 +1495,7 @@ def calcular_rendimiento(vehiculo_id):
     try:
         registros = Kardex.query.filter_by(
             vehiculo_id=vehiculo_id,
+            activo = True,
             tipo="SALIDA"
         ).order_by(Kardex.fecha.desc()).limit(2).all()
 
@@ -1454,6 +1669,7 @@ def reporte_rendimientos_excel():
             consumo = db.session.query(func.sum(Kardex.cantidad)).filter(
                 Kardex.vehiculo_id == v.id,
                 Kardex.tipo == "SALIDA",
+                Kardex.activo == True,
                 func.date(Kardex.fecha) == d.date()
             ).scalar() or 0
 
@@ -1508,7 +1724,8 @@ def reporte_rendimientos_excel():
 def dashboard():
 
     lista = Kardex.query.filter(
-        Kardex.tipo=="SALIDA"
+        Kardex.tipo=="SALIDA",
+        Kardex.activo == True
     ).order_by(
         Kardex.fecha.desc()
     ).all()
@@ -1516,17 +1733,20 @@ def dashboard():
     total_consumo = db.session.query(
         func.sum(Kardex.cantidad)
     ).filter(
-        Kardex.tipo=="SALIDA"
+        Kardex.tipo=="SALIDA",
+        Kardex.activo == True
     ).scalar() or 0
 
     total_abastecimientos = Kardex.query.filter_by(
-        tipo="SALIDA"
+        tipo="SALIDA",
+        activo = True
     ).count()
 
     vehiculos_activos = db.session.query(
         Kardex.vehiculo_id
     ).filter(
-        Kardex.tipo=="SALIDA"
+        Kardex.tipo=="SALIDA",
+        Kardex.activo == True
     ).distinct().count()
 
     consumo_promedio = round(
@@ -1541,7 +1761,8 @@ def dashboard():
         Kardex,
         Kardex.vehiculo_id == Vehiculo.id
     ).filter(
-        Kardex.tipo=="SALIDA"
+        Kardex.tipo=="SALIDA",
+        Kardex.activo == True
     ).group_by(
         Vehiculo.nombre
     ).all()
@@ -1553,7 +1774,8 @@ def dashboard():
         Kardex,
         Kardex.operador_id == Operador.id
     ).filter(
-        Kardex.tipo=="SALIDA"
+        Kardex.tipo=="SALIDA",
+        Kardex.activo == True
     ).group_by(
         Operador.nombre
     ).all()
@@ -1587,16 +1809,19 @@ def dashboard_gerencial():
     total_compras = db.session.query(
         func.sum(Kardex.cantidad)
     ).filter(
-        Kardex.tipo == "ENTRADA"
+        Kardex.tipo == "ENTRADA",
+        Kardex.activo == True
     ).scalar() or 0
 
     total_consumo = db.session.query(
         func.sum(Kardex.cantidad)
     ).filter(
-        Kardex.tipo == "SALIDA"
+        Kardex.tipo == "SALIDA",
+        Kardex.activo == True
     ).scalar() or 0
 
-    total_operaciones = Kardex.query.count()
+    total_operaciones = Kardex.query.filter_by(
+    activo=True).count()
 
     stock_total = db.session.query(
         func.sum(Tanque.stock_actual)
@@ -1613,11 +1838,13 @@ def dashboard_gerencial():
     # ==========================
 
     compras = Kardex.query.filter_by(
-        tipo="ENTRADA"
+        tipo="ENTRADA",
+        activo = True
     ).count()
 
     consumos = Kardex.query.filter_by(
-        tipo="SALIDA"
+        tipo="SALIDA",
+        activo = True
     ).count()
 
     # ==========================
@@ -1631,7 +1858,8 @@ def dashboard_gerencial():
         Kardex,
         Kardex.vehiculo_id == Vehiculo.id
     ).filter(
-        Kardex.tipo == "SALIDA"
+        Kardex.tipo == "SALIDA",
+        Kardex.activo == True
     ).group_by(
         Vehiculo.nombre
     ).all()
@@ -1647,7 +1875,8 @@ def dashboard_gerencial():
         Kardex,
         Kardex.operador_id == Operador.id
     ).filter(
-        Kardex.tipo == "SALIDA"
+        Kardex.tipo == "SALIDA",
+        Kardex.activo == True
     ).group_by(
         Operador.nombre
     ).all()
@@ -1656,7 +1885,8 @@ def dashboard_gerencial():
     # ULTIMOS MOVIMIENTOS
     # ==========================
 
-    movimientos = Kardex.query.order_by(
+    movimientos = Kardex.query.filter(
+    Kardex.activo == True).order_by(
         Kardex.fecha.desc()
     ).limit(20).all()
 
