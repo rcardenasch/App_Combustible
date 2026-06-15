@@ -1486,7 +1486,6 @@ def rendimiento_list():
     )
 
 
-
 @app.route("/rendimientos/calcular/<int:vehiculo_id>", methods=["POST"])
 @login_required
 @permission_required("rendimientos", "crear")
@@ -1570,143 +1569,274 @@ def registrar_carga():
     return {"msg": "Carga registrada"}
 
 
-
-#====================================================================================
-# Reportes
 # ===================================================================================
-
-@app.route("/reportes/rendimiento")
-@login_required
-@permission_required("rendimientos", "ver")
-def reporte_rendimiento():
-
-    vehiculos = Vehiculo.query.all()
-
-    return render_template(
-        "reporte_rendimientos.html",
-        vehiculos=vehiculos
-    )
+# Reporte Rendimiento Excel
+# ===================================================================================
 
 @app.route("/reportes/rendimientos/excel")
 @login_required
 @permission_required("rendimientos", "ver")
 def reporte_rendimientos_excel():
 
-    tipo = request.args.get("tipo")  # semanal, mensual, anual
+    tipo = request.args.get("tipo")
     fecha_str = request.args.get("fecha")
 
-    fecha_base = datetime.strptime(fecha_str, "%Y-%m-%d")
+    if not fecha_str:
+        return "Debe seleccionar una fecha", 400
+
+    fecha_base = datetime.strptime(
+        fecha_str,
+        "%Y-%m-%d"
+    )
 
     # =========================
     # RANGO DE FECHAS
     # =========================
+
     if tipo == "semanal":
-        inicio = fecha_base - timedelta(days=fecha_base.weekday())
+
+        inicio = fecha_base - timedelta(
+            days=fecha_base.weekday()
+        )
+
         fin = inicio + timedelta(days=6)
 
     elif tipo == "mensual":
+
         inicio = fecha_base.replace(day=1)
+
         if fecha_base.month == 12:
-            fin = fecha_base.replace(year=fecha_base.year+1, month=1, day=1) - timedelta(days=1)
+
+            fin = fecha_base.replace(
+                year=fecha_base.year + 1,
+                month=1,
+                day=1
+            ) - timedelta(days=1)
+
         else:
-            fin = fecha_base.replace(month=fecha_base.month+1, day=1) - timedelta(days=1)
+
+            fin = fecha_base.replace(
+                month=fecha_base.month + 1,
+                day=1
+            ) - timedelta(days=1)
 
     elif tipo == "anual":
-        inicio = fecha_base.replace(month=1, day=1)
-        fin = fecha_base.replace(month=12, day=31)
+
+        inicio = fecha_base.replace(
+            month=1,
+            day=1
+        )
+
+        fin = fecha_base.replace(
+            month=12,
+            day=31
+        )
 
     else:
         return "Tipo inválido", 400
 
     # =========================
-    # DATA BASE
+    # VEHICULOS
     # =========================
-    vehiculos = Vehiculo.query.filter_by(activo=True).all()
+
+    vehiculos = Vehiculo.query.filter_by(
+        activo=True,
+        proyecto_id=current_user.proyecto_id
+    ).order_by(
+        Vehiculo.nombre
+    ).all()
+
+    # =========================
+    # LISTA DE DÍAS
+    # =========================
 
     dias = []
+
     current = inicio
+
     while current <= fin:
+
         dias.append(current)
+
         current += timedelta(days=1)
+
+    # =========================
+    # CONSUMOS AGRUPADOS
+    # (UNA SOLA CONSULTA)
+    # =========================
+
+    ids_vehiculos = [v.id for v in vehiculos]
+
+    consumos_dict = {}
+
+    if ids_vehiculos:
+
+        consumos = db.session.query(
+            Kardex.vehiculo_id,
+            func.date(Kardex.fecha).label("dia"),
+            func.sum(Kardex.cantidad).label("total")
+        ).filter(
+            Kardex.tipo == "SALIDA",
+            Kardex.activo == True,
+            Kardex.vehiculo_id.in_(ids_vehiculos),
+            Kardex.fecha >= inicio,
+            Kardex.fecha < fin + timedelta(days=1)
+        ).group_by(
+            Kardex.vehiculo_id,
+            func.date(Kardex.fecha)
+        ).all()
+
+        for c in consumos:
+
+            consumos_dict[
+                (c.vehiculo_id, c.dia)
+            ] = float(c.total or 0)
 
     # =========================
     # CREAR EXCEL
     # =========================
+
     wb = Workbook()
+
     ws = wb.active
+
     ws.title = "Reporte"
 
-    # HEADER
+    # =========================
+    # CABECERA
+    # =========================
+
     ws["A1"] = "REPORTE DE CONSUMO DE COMBUSTIBLE"
     ws["A2"] = f"Periodo: {inicio.date()} - {fin.date()}"
 
+    # =========================
     # ENCABEZADOS
+    # =========================
+
     ws.cell(row=4, column=1, value="ITEM")
     ws.cell(row=4, column=2, value="EQUIPO")
 
-    col = 3
+    col_total = 3
+
     for d in dias:
-        ws.cell(row=4, column=col, value=d.strftime("%d-%b"))
-        col += 1
 
-    ws.cell(row=4, column=col, value="TOTAL")
+        ws.cell(
+            row=4,
+            column=col_total,
+            value=d.strftime("%d-%b")
+        )
+
+        col_total += 1
+
+    ws.cell(
+        row=4,
+        column=col_total,
+        value="TOTAL"
+    )
+
+    # Resaltar TOTAL
+
+    fill_yellow = PatternFill(
+        start_color="FFFF00",
+        end_color="FFFF00",
+        fill_type="solid"
+    )
+
+    ws.cell(
+        row=4,
+        column=col_total
+    ).fill = fill_yellow
 
     # =========================
-    # DATA POR VEHICULO
+    # DETALLE
     # =========================
+
     row = 5
 
-    for i, v in enumerate(vehiculos, start=1):
+    for i, vehiculo in enumerate(
+        vehiculos,
+        start=1
+    ):
 
-        ws.cell(row=row, column=1, value=i)
-        ws.cell(row=row, column=2, value=v.nombre)
+        ws.cell(
+            row=row,
+            column=1,
+            value=i
+        )
 
-        total = 0
+        ws.cell(
+            row=row,
+            column=2,
+            value=vehiculo.nombre
+        )
+
+        total_consumo = 0
+
         col = 3
 
         for d in dias:
 
-            consumo = db.session.query(func.sum(Kardex.cantidad)).filter(
-                Kardex.vehiculo_id == v.id,
-                Kardex.tipo == "SALIDA",
-                Kardex.activo == True,
-                func.date(Kardex.fecha) == d.date()
-            ).scalar() or 0
+            consumo = consumos_dict.get(
+                (vehiculo.id, d.date()),
+                0
+            )
 
-            ws.cell(row=row, column=col, value=round(consumo, 2))
-            total += consumo
+            ws.cell(
+                row=row,
+                column=col,
+                value=round(consumo, 2)
+            )
+
+            total_consumo += consumo
+
             col += 1
 
-        ws.cell(row=row, column=col, value=round(total, 2))
+        ws.cell(
+            row=row,
+            column=col,
+            value=round(total_consumo, 2)
+        )
 
         row += 1
 
+    # =========================
+    # FORMATO
+    # =========================
 
-    fill_yellow = PatternFill(start_color="FFFF00", end_color="FFFF00", fill_type="solid")
-
-    ws.cell(row=4, column=col).fill = fill_yellow
-    
-    #Congelar encabezado
     ws.freeze_panes = "C5"
 
+    for columna in ws.columns:
 
-    for col in ws.columns:
         max_length = 0
-        col_letter = col[0].column_letter
-        for cell in col:
-            if cell.value:
-                max_length = max(max_length, len(str(cell.value)))
-        ws.column_dimensions[col_letter].width = max_length + 2
 
-    vehiculos = Vehiculo.query.filter_by(
-        proyecto_id=current_user.proyecto_id
-    ).all()
+        try:
+
+            letra = columna[0].column_letter
+
+            for celda in columna:
+
+                if celda.value:
+
+                    max_length = max(
+                        max_length,
+                        len(str(celda.value))
+                    )
+
+            ws.column_dimensions[
+                letra
+            ].width = max_length + 2
+
+        except:
+            pass
 
     # =========================
     # EXPORTAR
     # =========================
+
     output = io.BytesIO()
+
     wb.save(output)
+
     output.seek(0)
 
     return send_file(
@@ -1715,7 +1845,6 @@ def reporte_rendimientos_excel():
         download_name=f"reporte_{tipo}.xlsx",
         mimetype="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
     )
-
 #==================================================================
 # DASHBOARD - 
 #==================================================================
