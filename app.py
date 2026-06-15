@@ -1568,7 +1568,14 @@ def registrar_carga():
 
     return {"msg": "Carga registrada"}
 
+@app.route("/reportes/rendimientos")
+@login_required
+@permission_required("rendimientos", "ver")
+def vista_reporte_rendimiento():
 
+    return render_template(
+        "reporte_rendimientos.html"
+    )
 # ===================================================================================
 # Reporte Rendimiento Excel
 # ===================================================================================
