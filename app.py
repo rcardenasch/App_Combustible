@@ -926,6 +926,7 @@ def kardex_list():
     return render_template(
         "kardex.html",
         lista=Kardex.query.filter(Kardex.activo == True).order_by(Kardex.fecha.desc()).all(),
+        proyectos=Proyecto.query.all(),
         vehiculos=Vehiculo.query.all(),
         tanques=Tanque.query.all(),
         operadores=Operador.query.all(),
@@ -938,6 +939,7 @@ def kardex_list():
 def kardex_nuevo():
 
     try:
+        poyecto_id=request.form.get("proyecto_id")
         tipo = request.form.get("tipo")
         tanque_id = request.form.get("tanque_id")
         vehiculo_id = request.form.get("vehiculo_id")
@@ -1120,6 +1122,7 @@ def kardex_nuevo():
         nuevo = Kardex(
             tipo=tipo,
             fecha=fecha_movimiento,
+            proyecto_id=poyecto_id,
             tanque_id=int(tanque_id) if tanque_id else None,
             vehiculo_id=vehiculo_id,
             usuario_id=current_user.id,

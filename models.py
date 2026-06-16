@@ -216,6 +216,15 @@ class Kardex(db.Model):
 
     operador = db.relationship("Operador")
 
+    proyecto_id = db.Column(db.Integer,db.ForeignKey("proyectos.id"),
+        nullable=False,
+        index=True
+    )
+    proyecto = db.relationship(
+        "Proyecto",
+        backref="movimientos"
+    )
+
     activo = db.Column(db.Boolean,default=True)
     fecha_anulacion = db.Column(db.DateTime)
     anulado_por = db.Column(db.Integer,db.ForeignKey("usuarios.id"))
