@@ -22,9 +22,7 @@
     </div>
 
     {% if puede_crear %}
-    <button class="btn btn-primary btn-lg shadow-sm"
-            data-bs-toggle="modal"
-            data-bs-target="#modalNuevoTanque">
+    <button class="btn btn-primary btn-lg shadow-sm" data-bs-toggle="modal" data-bs-target="#modalNuevoTanque">
 
         <i class="bi bi-plus-lg me-2"></i>
         Nuevo Tanque
@@ -47,6 +45,7 @@
                         <th class="ps-4">Tanque</th>
                         <th>Capacidad</th>
                         <th>Stock</th>
+                        <th>Precio.Prom</th>
                         <th>Nivel</th>
                         <th>Estado</th>
                         <th class="text-center pe-4">Acciones</th>
@@ -79,21 +78,26 @@
                         </td>
 
                         <td>
-                            <span class="{% if t.stock_actual <= t.stock_minimo %}text-danger{% else %}text-dark{% endif %} fw-bold">
+                            <span
+                                class="{% if t.stock_actual <= t.stock_minimo %}text-danger{% else %}text-dark{% endif %} fw-bold">
                                 {{ t.stock_actual }}
                             </span>
                             gls
+                        </td>
+                        <td>
+                            S/<span class="fw-semibold">
+                                {{ t.precio_promedio }}
+                            </span>
                         </td>
 
                         <td style="width:220px;">
 
                             <div class="d-flex align-items-center">
 
-                                <div class="progress flex-grow-1"
-                                     style="height:10px;">
+                                <div class="progress flex-grow-1" style="height:10px;">
 
                                     <div class="progress-bar {% if t.stock_actual <= t.stock_minimo %}bg-danger{% else %}bg-primary{% endif %}"
-                                         style="width:{{ porcentaje }}%">
+                                        style="width:{{ porcentaje }}%">
                                     </div>
 
                                 </div>
@@ -108,15 +112,14 @@
 
                         <td>
 
-                            {% if t.stock_actual <= t.stock_minimo %}
-                            <span class="badge bg-danger">
+                            {% if t.stock_actual <= t.stock_minimo %} <span class="badge bg-danger">
                                 CRÍTICO
-                            </span>
-                            {% else %}
-                            <span class="badge bg-success">
-                                OPERATIVO
-                            </span>
-                            {% endif %}
+                                </span>
+                                {% else %}
+                                <span class="badge bg-success">
+                                    OPERATIVO
+                                </span>
+                                {% endif %}
 
                         </td>
 
@@ -125,21 +128,18 @@
                             <div class="btn-group shadow-sm">
 
                                 {% if puede_editar %}
-                                <button class="btn btn-outline-warning btn-sm"
-                                        data-bs-toggle="modal"
-                                        data-bs-target="#modalEditar{{ t.id }}">
+                                <button class="btn btn-outline-warning btn-sm" data-bs-toggle="modal"
+                                    data-bs-target="#modalEditar{{ t.id }}">
 
                                     <i class="bi bi-pencil"></i>
                                 </button>
                                 {% endif %}
 
                                 {% if puede_eliminar %}
-                                <form method="POST"
-                                      action="{{ url_for('tanques_eliminar', id=t.id) }}">
+                                <form method="POST" action="{{ url_for('tanques_eliminar', id=t.id) }}">
 
-                                    <button type="button"
-                                            class="btn btn-outline-danger btn-sm"
-                                            onclick="confirmarEliminacion(this.closest('form'))">
+                                    <button type="button" class="btn btn-outline-danger btn-sm"
+                                        onclick="confirmarEliminacion(this.closest('form'))">
 
                                         <i class="bi bi-trash"></i>
                                     </button>
@@ -170,17 +170,13 @@ MODALES EDITAR
 ========================= -->
 {% for t in lista %}
 
-<div class="modal fade"
-     id="modalEditar{{ t.id }}"
-     tabindex="-1"
-     aria-hidden="true">
+<div class="modal fade" id="modalEditar{{ t.id }}" tabindex="-1" aria-hidden="true">
 
     <div class="modal-dialog modal-lg modal-dialog-centered">
 
         <div class="modal-content border-0 shadow-lg">
 
-            <form method="POST"
-                  action="{{ url_for('tanques_editar', id=t.id) }}">
+            <form method="POST" action="{{ url_for('tanques_editar', id=t.id) }}">
 
                 <div class="modal-header bg-light">
 
@@ -189,9 +185,7 @@ MODALES EDITAR
                         Editar Tanque
                     </h5>
 
-                    <button type="button"
-                            class="btn-close"
-                            data-bs-dismiss="modal">
+                    <button type="button" class="btn-close" data-bs-dismiss="modal">
                     </button>
 
                 </div>
@@ -205,11 +199,7 @@ MODALES EDITAR
                                 Nombre
                             </label>
 
-                            <input type="text"
-                                   name="nombre"
-                                   class="form-control"
-                                   value="{{ t.nombre }}"
-                                   required>
+                            <input type="text" name="nombre" class="form-control" value="{{ t.nombre }}" required>
                         </div>
 
                         <div class="col-md-6">
@@ -217,12 +207,8 @@ MODALES EDITAR
                                 Capacidad
                             </label>
 
-                            <input type="number"
-                                   step="0.01"
-                                   name="capacidad"
-                                   class="form-control"
-                                   value="{{ t.capacidad }}"
-                                   required>
+                            <input type="number" step="0.01" name="capacidad" class="form-control"
+                                value="{{ t.capacidad }}" required>
                         </div>
 
                         <div class="col-md-6">
@@ -230,12 +216,8 @@ MODALES EDITAR
                                 Stock Actual
                             </label>
 
-                            <input type="number"
-                                   step="0.01"
-                                   name="stock_actual"
-                                   class="form-control"
-                                   value="{{ t.stock_actual }}"
-                                   required>
+                            <input type="number" step="0.01" name="stock_actual" class="form-control"
+                                value="{{ t.stock_actual }}" disabled>
                         </div>
 
                         <div class="col-md-6">
@@ -243,12 +225,8 @@ MODALES EDITAR
                                 Stock Mínimo
                             </label>
 
-                            <input type="number"
-                                   step="0.01"
-                                   name="stock_minimo"
-                                   class="form-control"
-                                   value="{{ t.stock_minimo }}"
-                                   required>
+                            <input type="number" step="0.01" name="stock_minimo" class="form-control"
+                                value="{{ t.stock_minimo }}" required>
                         </div>
 
                     </div>
@@ -257,15 +235,12 @@ MODALES EDITAR
 
                 <div class="modal-footer bg-light">
 
-                    <button type="button"
-                            class="btn btn-outline-secondary"
-                            data-bs-dismiss="modal">
+                    <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">
 
                         Cancelar
                     </button>
 
-                    <button type="submit"
-                            class="btn btn-warning fw-bold">
+                    <button type="submit" class="btn btn-warning fw-bold">
 
                         <i class="bi bi-check2-circle me-1"></i>
                         Guardar Cambios
@@ -289,17 +264,13 @@ MODAL NUEVO
 ========================= -->
 {% if puede_crear %}
 
-<div class="modal fade"
-     id="modalNuevoTanque"
-     tabindex="-1"
-     aria-hidden="true">
+<div class="modal fade" id="modalNuevoTanque" tabindex="-1" aria-hidden="true">
 
     <div class="modal-dialog modal-lg modal-dialog-centered">
 
         <div class="modal-content border-0 shadow-lg">
 
-            <form method="POST"
-                  action="{{ url_for('tanques_nuevo') }}">
+            <form method="POST" action="{{ url_for('tanques_nuevo') }}">
 
                 <div class="modal-header bg-light">
 
@@ -308,9 +279,7 @@ MODAL NUEVO
                         Nuevo Tanque
                     </h5>
 
-                    <button type="button"
-                            class="btn-close"
-                            data-bs-dismiss="modal">
+                    <button type="button" class="btn-close" data-bs-dismiss="modal">
                     </button>
 
                 </div>
@@ -324,10 +293,7 @@ MODAL NUEVO
                                 Nombre
                             </label>
 
-                            <input type="text"
-                                   name="nombre"
-                                   class="form-control"
-                                   required>
+                            <input type="text" name="nombre" class="form-control" required>
                         </div>
 
                         <div class="col-md-6">
@@ -335,11 +301,7 @@ MODAL NUEVO
                                 Capacidad
                             </label>
 
-                            <input type="number"
-                                   step="0.01"
-                                   name="capacidad"
-                                   class="form-control"
-                                   required>
+                            <input type="number" step="0.01" name="capacidad" class="form-control" required>
                         </div>
 
                         <div class="col-md-6">
@@ -347,11 +309,7 @@ MODAL NUEVO
                                 Stock Inicial
                             </label>
 
-                            <input type="number"
-                                   step="0.01"
-                                   name="stock_actual"
-                                   class="form-control"
-                                   required>
+                            <input type="number" step="0.01" name="stock_actual" class="form-control" disabled>
                         </div>
 
                         <div class="col-md-6">
@@ -359,11 +317,7 @@ MODAL NUEVO
                                 Stock Mínimo
                             </label>
 
-                            <input type="number"
-                                   step="0.01"
-                                   name="stock_minimo"
-                                   class="form-control"
-                                   required>
+                            <input type="number" step="0.01" name="stock_minimo" class="form-control" required>
                         </div>
 
                     </div>
@@ -372,15 +326,12 @@ MODAL NUEVO
 
                 <div class="modal-footer bg-light">
 
-                    <button type="button"
-                            class="btn btn-outline-secondary"
-                            data-bs-dismiss="modal">
+                    <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">
 
                         Cancelar
                     </button>
 
-                    <button type="submit"
-                            class="btn btn-primary fw-bold">
+                    <button type="submit" class="btn btn-primary fw-bold">
 
                         <i class="bi bi-save me-1"></i>
                         Registrar Tanque

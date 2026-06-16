@@ -943,6 +943,11 @@ def kardex_nuevo():
         vehiculo_id = request.form.get("vehiculo_id")
         operador_id = request.form.get("operador_id")
         tanque_lleno = request.form.get("tanque_lleno") == "on"
+        
+        precio_unitario = request.form.get("precio_unitario")
+        proveedor = request.form.get("proveedor")
+        factura = request.form.get("factura")
+
 
         fecha_str = request.form.get("fecha")
         cantidad = request.form.get("cantidad")
@@ -964,8 +969,16 @@ def kardex_nuevo():
         # =========================
         # PARSEO SEGURO
         # =========================
+        print(precio_unitario)
+        print(cantidad)
         try:
-            cantidad = float(cantidad) if cantidad else 0
+            precio_unitario = float(precio_unitario) if precio_unitario else 0.0
+        except:
+            flash("Precio inválido", "danger")
+            return redirect(url_for("kardex_list"))
+
+        try:
+            cantidad = float(cantidad) if cantidad else 0.0
         except:
             flash("Cantidad inválida", "danger")
             return redirect(url_for("kardex_list"))
@@ -983,7 +996,12 @@ def kardex_nuevo():
             flash("Tipo inválido", "danger")
             return redirect(url_for("kardex_list"))
 
-        tanque = Tanque.query.get(int(tanque_id)) if tanque_id else None
+        # CÓDIGO ACTUAL (Obsoleto):
+        # tanque = Tanque.query.get(int(tanque_id))
+
+        # CÓDIGO CORREGIDO (Moderno):
+        tanque = db.session.get(Tanque, int(tanque_id)) if tanque_id else None
+
 
         # =========================
         # VALIDACIÓN SALIDA
@@ -1060,6 +1078,16 @@ def kardex_nuevo():
                 )
 
                 return redirect(url_for("kardex_list"))
+            
+            if precio_unitario <= 0.0:
+                flash(
+                    "Debe ingresar precio por galón",
+                    "danger"
+                )
+
+                return redirect(url_for("kardex_list"))
+            
+        costo_total = cantidad * precio_unitario
 
         # =========================
         # FECHA DEL MOVIMIENTO
@@ -1096,6 +1124,13 @@ def kardex_nuevo():
             vehiculo_id=vehiculo_id,
             usuario_id=current_user.id,
             cantidad=cantidad,
+
+            precio_unitario=precio_unitario,
+            costo_total=costo_total,
+
+            proveedor=proveedor,
+            factura=factura,
+
             horometro_inicial=h_inicial,
             horometro_final=h_final,
             tanque_lleno=tanque_lleno,
@@ -1108,66 +1143,91 @@ def kardex_nuevo():
         db.session.flush()  # 🔥 IMPORTANTE
 
         # =========================
-        # STOCK
+        # STOCK (CORREGIDO)
         # =========================
         if tipo == "ENTRADA":
+            # 1. Calculamos el valor con el stock real ANTES de la compra
+            tanque_precio_prom = float(tanque.precio_promedio) if tanque.precio_promedio else 0.0
+            tanque_stock_previo = float(tanque.stock_actual)
+
+            valor_stock_actual = tanque_stock_previo * tanque_precio_prom
+            valor_compra = cantidad * precio_unitario
+
+            # 2. RECIÉN AHORA actualizamos el stock físico en la base de datos
             tanque.stock_actual += cantidad
+            nuevo_stock = float(tanque.stock_actual)
+
+            # 3. Calculamos el promedio ponderado real
+            if nuevo_stock > 0:
+                tanque.precio_promedio = (valor_stock_actual + valor_compra) / nuevo_stock
+
 
         elif tipo == "SALIDA":
-            tanque.stock_actual -= cantidad
+            if tanque:
+                # 1. Capturamos el precio promedio actual de forma segura (antes de restar)
+                precio_unitario = float(tanque.precio_promedio) if tanque.precio_promedio else 0.0
+                
+                # 2. Calculamos el costo total del despacho
+                costo_total = cantidad * precio_unitario
+
+                # 3. RECIÉN AHORA restamos el combustible del stock físico
+                tanque.stock_actual -= cantidad
 
         # =========================
-        # 🚀 CONTROL TANQUE LLENO
+        # 🚀 CONTROL TANQUE LLENO (CORREGIDO)
         # =========================
         if tipo == "SALIDA" and tanque_lleno and vehiculo_id:
 
             anterior = Kardex.query.filter(
-            Kardex.vehiculo_id == vehiculo_id,
-            Kardex.tipo == "SALIDA",
-            Kardex.tanque_lleno == True,
-            Kardex.activo == True,
-            Kardex.fecha < nuevo.fecha).order_by(
-            Kardex.fecha.desc()).first()
+                Kardex.vehiculo_id == vehiculo_id,
+                Kardex.tipo == "SALIDA",
+                Kardex.tanque_lleno == True,
+                Kardex.activo == True,
+                Kardex.fecha < nuevo.fecha
+            ).order_by(Kardex.fecha.desc()).first()
 
             if anterior:
-
-                h_ini = anterior.horometro_final or 0
-                h_fin = h_final or 0
+                h_ini = float(anterior.horometro_final) if anterior.horometro_final else 0.0
+                h_fin = float(h_final) if h_final else 0.0
 
                 recorrido_total = h_fin - h_ini
 
-                consumo_total = db.session.query(func.sum(Kardex.cantidad)).filter(
+                # Capturamos la suma y la transformamos a float seguro inmediatamente
+                consumo_scalar = db.session.query(func.sum(Kardex.cantidad)).filter(
                     Kardex.vehiculo_id == vehiculo_id,
                     Kardex.tipo == "SALIDA",
                     Kardex.activo == True,
                     Kardex.cantidad > 0,
-                    Kardex.fecha > anterior.fecha,
+                    Kardex.id > anterior.id,  # 🔥 Más preciso que filtrar solo por fecha
                     Kardex.fecha <= nuevo.fecha
-                ).scalar() or 0
+                ).scalar()
 
-                if consumo_total > 0 and recorrido_total > 0:
+                consumo_total = float(consumo_scalar) if consumo_scalar else 0.0
+
+                # Evitamos división entre cero y errores de tipos mezclados
+                if consumo_total > 0.0 and recorrido_total > 0.0:
                     
                     rendimiento = consumo_total / recorrido_total
 
-                    vehiculo = Vehiculo.query.get(vehiculo_id)
+                    # CORRECCIÓN: API Moderna de SQLAlchemy 2.0
+                    vehiculo = db.session.get(Vehiculo, vehiculo_id)
                     estado = "NORMAL"
 
                     if vehiculo and vehiculo.rendimiento_promedio:
-                        prom = vehiculo.rendimiento_promedio
+                        prom = float(vehiculo.rendimiento_promedio)
 
-                        # rendimiento_calculado = galones por hora
-                        # Menor valor = mejor rendimiento
-                        # Mayor valor = peor rendimiento
-
+                        # rendimiento_calculado = galones por hora/KM
+                        # Menor valor = mejor rendimiento (consume menos)
+                        # Mayor valor = peor rendimiento (consume más)
                         if rendimiento > prom * 1.2:
-                            estado = "BAJO"   # 🔴 consume mucho (malo)
+                            estado = "BAJO"   # 🔴 Consume mucho
                         elif rendimiento < prom * 0.8:
-                            estado = "ALTO"   # 🟢 consume poco (bueno)
+                            estado = "ALTO"   # 🟢 Consume poco
 
                         if estado == "BAJO":
                             alerta = Alerta(
                                 tipo="RENDIMIENTO_BAJO",
-                                mensaje=f"Vehículo {vehiculo_id} bajo rendimiento",
+                                mensaje=f"Vehículo {vehiculo_id} bajo rendimiento: {rendimiento:.2f} Gls/H",
                                 vehiculo_id=vehiculo_id
                             )
                             db.session.add(alerta)
@@ -1183,14 +1243,12 @@ def kardex_nuevo():
                         horometro_abastecimiento_inicial=h_ini,
                         horometro_abastecimiento_final=h_fin
                     )
-
                     db.session.add(nuevo_rend)
 
-                    
-
+        # Confirmación final de la transacción en la BD
         db.session.commit()
+        flash("✅ Movimiento registrado con éxito", "success")
 
-        flash("✅ Movimiento registrado", "success")
 
     except Exception as e:
         db.session.rollback()
@@ -1223,25 +1281,49 @@ def kardex_anular(id):
 
         tanque = mov.tanque
 
+        # CORRECCIÓN: API Moderna de SQLAlchemy 2.0 (Reemplaza la línea vieja del principio)
+        mov = db.session.get(Kardex, id) or abort(404)
+
+        if not mov.activo:
+            flash("Movimiento ya fue anulado", "warning")
+            return redirect(url_for("kardex_list"))
+
+        tanque = mov.tanque
+
         # ===================================
-        # REVERSAR STOCK
+        # REVERSAR STOCK Y PRECIO PROMEDIO
         # ===================================
         if mov.tipo == "ENTRADA":
+            # 1. Aseguramos tipos float para evitar colisiones NoneType / Decimal
+            tanque_precio_prom = float(tanque.precio_promedio) if tanque.precio_promedio else 0.0
+            tanque_stock_actual = float(tanque.stock_actual)
+            
+            mov_cantidad = float(mov.cantidad)
+            mov_precio = float(mov.precio_unitario) if mov.precio_unitario else 0.0
 
-            nuevo_stock = tanque.stock_actual - mov.cantidad
+            nuevo_stock = tanque_stock_actual - mov_cantidad
 
             if nuevo_stock < 0:
+                flash("No se puede anular porque dejaría stock negativo en el tanque.", "danger")
+                return redirect(url_for("kardex_list"))
 
-                flash(
-                    "No se puede anular porque dejaría stock negativo.",
-                    "danger"
-                )
+            # 2. Reversar la ponderación económica (Dinero actual menos dinero de la compra anulada)
+            valor_inventario_actual = tanque_stock_actual * tanque_precio_prom
+            valor_compra_anulada = mov_cantidad * mov_precio
+            nuevo_valor_inventario = valor_inventario_actual - valor_compra_anulada
 
-                return redirect(
-                    url_for("kardex_list")
-                )
-
+            # 3. Aplicar los nuevos valores calculados al tanque
             tanque.stock_actual = nuevo_stock
+            
+            if nuevo_stock > 0:
+                tanque.precio_promedio = nuevo_valor_inventario / nuevo_stock
+            else:
+                tanque.precio_promedio = 0.00  # Si el tanque se queda vacío, el precio vuelve a cero
+
+        elif mov.tipo == "SALIDA":
+            # En una salida el precio promedio no cambia, solo devolvemos el combustible físico
+            tanque.stock_actual += mov.cantidad
+
 
         elif mov.tipo == "SALIDA":
 
@@ -1308,76 +1390,76 @@ def kardex_anular(id):
     )
 
 def recalcular_rendimientos_vehiculo(vehiculo_id):
+    # ===================================
+    # ELIMINAR CÁLCULOS ANTERIORES (Sintaxis 2.0 segura)
+    # ===================================
+    db.session.execute(
+        db.delete(Rendimiento).where(Rendimiento.vehiculo_id == vehiculo_id)
+    )
+    db.session.execute(
+        db.delete(Alerta).where(Alerta.vehiculo_id == vehiculo_id)
+    )
 
-    # Eliminar cálculos anteriores
-    Rendimiento.query.filter_by(
-        vehiculo_id=vehiculo_id
-    ).delete()
-
-    Alerta.query.filter_by(
-        vehiculo_id=vehiculo_id
-    ).delete()
-
-    # Obtener todos los tanque lleno activos
-    abastecimientos = Kardex.query.filter(
-        Kardex.vehiculo_id == vehiculo_id,
-        Kardex.tipo == "SALIDA",
-        Kardex.tanque_lleno == True,
-        Kardex.activo == True,
-        Kardex.cantidad > 0
-    ).order_by(
-        Kardex.fecha.asc()
+    # ===================================
+    # OBTENER ABASTECIMIENTOS ACTIVOS
+    # ===================================
+    abastecimientos = db.session.scalars(
+        db.select(Kardex).where(
+            Kardex.vehiculo_id == vehiculo_id,
+            Kardex.tipo == "SALIDA",
+            Kardex.tanque_lleno == True,
+            Kardex.activo == True,
+            Kardex.cantidad > 0
+        ).order_by(Kardex.fecha.asc())
     ).all()
 
-    # Necesitamos pares
+    # Necesitamos al menos dos puntos para calcular una diferencia/recorrido
     if len(abastecimientos) < 2:
         return
 
+    # ===================================
+    # PROCESAR CÁLCULOS POR PARES
+    # ===================================
     for i in range(1, len(abastecimientos)):
-
         anterior = abastecimientos[i - 1]
         actual = abastecimientos[i]
 
-        h_ini = anterior.horometro_final or 0
-        h_fin = actual.horometro_final or 0
+        h_ini = float(anterior.horometro_final) if anterior.horometro_final else 0.0
+        h_fin = float(actual.horometro_final) if actual.horometro_final else 0.0
 
         recorrido_total = h_fin - h_ini
 
-        consumo_total = db.session.query(
-            func.sum(Kardex.cantidad)
-        ).filter(
+        # Sumatoria limpia aislando tipos Decimal de la BD a float de Python
+        consumo_scalar = db.session.query(func.sum(Kardex.cantidad)).filter(
             Kardex.vehiculo_id == vehiculo_id,
             Kardex.tipo == "SALIDA",
             Kardex.activo == True,
             Kardex.cantidad > 0,
-            Kardex.fecha > anterior.fecha,
+            Kardex.id > anterior.id,  # 🔥 Cambiado a ID para evitar desajustes por milisegundos
             Kardex.fecha <= actual.fecha
-        ).scalar() or 0
+        ).scalar()
 
-        if consumo_total <= 0:
-            continue
+        consumo_total = float(consumo_scalar) if consumo_scalar else 0.0
 
-        if recorrido_total <= 0:
+        # Validaciones de seguridad matemática
+        if consumo_total <= 0.0 or recorrido_total <= 0.0:
             continue
 
         rendimiento = consumo_total / recorrido_total
 
-        vehiculo = Vehiculo.query.get(
-            vehiculo_id
-        )
-
+        # API Moderna de SQLAlchemy 2.0 para buscar el vehículo
+        vehiculo = db.session.get(Vehiculo, vehiculo_id)
         estado = "NORMAL"
 
         if vehiculo and vehiculo.rendimiento_promedio:
-
-            prom = vehiculo.rendimiento_promedio
+            prom = float(vehiculo.rendimiento_promedio)
 
             if rendimiento > prom * 1.2:
-                estado = "BAJO"
-
+                estado = "BAJO"  # Consumo excesivo (malo)
             elif rendimiento < prom * 0.8:
-                estado = "ALTO"
+                estado = "ALTO"  # Consumo óptimo (bueno)
 
+        # Crear el nuevo historial recalculado
         nuevo_rend = Rendimiento(
             vehiculo_id=vehiculo_id,
             consumo_total=consumo_total,
@@ -1389,17 +1471,14 @@ def recalcular_rendimientos_vehiculo(vehiculo_id):
             horometro_abastecimiento_inicial=h_ini,
             horometro_abastecimiento_final=h_fin
         )
-
         db.session.add(nuevo_rend)
 
         if estado == "BAJO":
-
             alerta = Alerta(
                 tipo="RENDIMIENTO_BAJO",
-                mensaje=f"Vehículo {vehiculo_id} bajo rendimiento",
+                mensaje=f"Vehículo {vehiculo_id} bajo rendimiento detectado en recálculo",
                 vehiculo_id=vehiculo_id
             )
-
             db.session.add(alerta)
 
 @app.route("/kardex/ultimo_horometro/<int:vehiculo_id>")
@@ -1547,10 +1626,20 @@ def calcular_rendimiento(vehiculo_id):
 def registrar_carga():
     data = request.json
 
+    cantidad = float(data["cantidad"])
+
+    precio_unitario = float(
+        data.get("precio_unitario", 0)
+    )
+
+    costo_total = cantidad * precio_unitario
+
     nueva = Kardex(
         tipo="SALIDA",
         fecha=datetime.utcnow(),
-        cantidad=data["cantidad"],
+        cantidad=cantidad,
+        precio_unitario=precio_unitario,
+        costo_total=costo_total,
         tanque_id=data["tanque_id"],
         vehiculo_id=data["vehiculo_id"],
         usuario_id=current_user.id,
@@ -1560,13 +1649,19 @@ def registrar_carga():
 
     db.session.add(nueva)
 
+
     # actualizar stock
-    tanque = Tanque.query.get(data["tanque_id"])
-    tanque.stock_actual -= data["cantidad"]
+    tanque = Tanque.query.get(
+        data["tanque_id"]
+    )
+
+    tanque.stock_actual -= cantidad
 
     db.session.commit()
 
-    return {"msg": "Carga registrada"}
+    return {
+        "msg": "Carga registrada"
+    }
 
 @app.route("/reportes/rendimientos")
 @login_required
@@ -1859,86 +1954,82 @@ def reporte_rendimiento():
         download_name=f"reporte_{tipo}.xlsx",
         mimetype="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
     )
-#==================================================================
-# DASHBOARD - 
-#==================================================================
 @app.route("/dashboard")
 @login_required
 def dashboard():
-
-    lista = Kardex.query.filter(
-        Kardex.tipo=="SALIDA",
-        Kardex.activo == True
-    ).order_by(
-        Kardex.fecha.desc()
+    # 1. Lista de últimos movimientos (Sintaxis 2.0 limpia)
+    lista = db.session.scalars(
+        db.select(Kardex)
+        .where(Kardex.tipo == "SALIDA", Kardex.activo == True)
+        .order_by(Kardex.fecha.desc())
+        .limit(10) # Acotamos a los últimos 10 para no saturar el servidor
     ).all()
 
-    total_consumo = db.session.query(
-        func.sum(Kardex.cantidad)
-    ).filter(
-        Kardex.tipo=="SALIDA",
-        Kardex.activo == True
-    ).scalar() or 0
+    # 2. Consumo Total de Combustible
+    total_consumo_scalar = db.session.query(func.sum(Kardex.cantidad)).filter(
+        Kardex.tipo == "SALIDA", Kardex.activo == True
+    ).scalar()
+    total_consumo = float(total_consumo_scalar) if total_consumo_scalar else 0.0
 
-    total_abastecimientos = Kardex.query.filter_by(
-        tipo="SALIDA",
-        activo = True
-    ).count()
+    # 3. Total de Despachos (Conteo)
+    total_abastecimientos = db.session.scalar(
+        db.select(func.count(Kardex.id)).where(Kardex.tipo == "SALIDA", Kardex.activo == True)
+    ) or 0
 
-    vehiculos_activos = db.session.query(
-        Kardex.vehiculo_id
-    ).filter(
-        Kardex.tipo=="SALIDA",
-        Kardex.activo == True
-    ).distinct().count()
+    # 4. CORRECCIÓN: Conteo correcto de Vehículos Únicos Activos
+    vehiculos_activos = db.session.scalar(
+        db.select(func.count(Kardex.vehiculo_id.distinct())).where(
+            Kardex.tipo == "SALIDA", Kardex.activo == True
+        )
+    ) or 0
 
-    consumo_promedio = round(
-        total_consumo / total_abastecimientos,
-        2
-    ) if total_abastecimientos else 0
+    # 5. Promedio por despacho
+    consumo_promedio = round(total_consumo / total_abastecimientos, 2) if total_abastecimientos else 0.0
 
-    por_vehiculo = db.session.query(
-        Vehiculo.nombre,
-        func.sum(Kardex.cantidad)
-    ).join(
-        Kardex,
-        Kardex.vehiculo_id == Vehiculo.id
-    ).filter(
-        Kardex.tipo=="SALIDA",
-        Kardex.activo == True
-    ).group_by(
-        Vehiculo.nombre
+    # 6. CORRECCIÓN GRÁFICOS: Mapeo seguro convirtiendo Decimal a float
+    por_vehiculo_raw = db.session.query(Vehiculo.nombre, func.sum(Kardex.cantidad))\
+        .join(Kardex, Kardex.vehiculo_id == Vehiculo.id)\
+        .filter(Kardex.tipo == "SALIDA", Kardex.activo == True)\
+        .group_by(Vehiculo.nombre).all()
+    por_vehiculo = [[v[0], float(v[1])] for v in por_vehiculo_raw]
+
+    por_operador_raw = db.session.query(Operador.nombre, func.sum(Kardex.cantidad))\
+        .join(Kardex, Kardex.operador_id == Operador.id)\
+        .filter(Kardex.tipo == "SALIDA", Kardex.activo == True)\
+        .group_by(Operador.nombre).all()
+    por_operador = [[o[0], float(o[1])] for o in por_operador_raw]
+
+    # 7. Información de tanques e inventario físico total
+    total_tanques = db.session.scalar(db.select(func.count(Tanque.id))) or 0
+    stock_total_scalar = db.session.query(func.sum(Tanque.stock_actual)).scalar()
+    stock_total = float(stock_total_scalar) if stock_total_scalar else 0.0
+
+    # ==================================================================
+    # 🌟 NUEVOS ADITAMENTOS OPERATIVOS CRÍTICOS
+    # ==================================================================
+    # Alertas activas de rendimiento deficiente para el operador
+    alertas_criticas = db.session.scalar(
+        db.select(func.count(Alerta.id)).where(Alerta.tipo == "RENDIMIENTO_BAJO")
+    ) or 0
+
+    # Lista de tanques que están por debajo del 20% de su capacidad total
+    tanques_criticos = db.session.scalars(
+        db.select(Tanque).where(Tanque.stock_actual <= (Tanque.capacidad * 0.20))
     ).all()
-
-    por_operador = db.session.query(
-        Operador.nombre,
-        func.sum(Kardex.cantidad)
-    ).join(
-        Kardex,
-        Kardex.operador_id == Operador.id
-    ).filter(
-        Kardex.tipo=="SALIDA",
-        Kardex.activo == True
-    ).group_by(
-        Operador.nombre
-    ).all()
-
-    total_tanques = Tanque.query.count()
-    stock_total = db.session.query(
-        func.sum(Tanque.stock_actual)
-    ).scalar() or 0
 
     return render_template(
         "dashboard_operativo.html",
         lista=lista,
-        total_consumo=round(total_consumo,2),
+        total_consumo=round(total_consumo, 2),
         total_abastecimientos=total_abastecimientos,
         vehiculos_activos=vehiculos_activos,
         consumo_promedio=consumo_promedio,
         por_vehiculo=por_vehiculo,
         por_operador=por_operador,
         total_tanques=total_tanques,
-        stock_total=stock_total
+        stock_total=round(stock_total, 2),
+        alertas_criticas=alertas_criticas,
+        tanques_criticos=tanques_criticos
     )
 
 @app.route("/dashboard/gerencial")
@@ -2033,6 +2124,22 @@ def dashboard_gerencial():
         Kardex.fecha.desc()
     ).limit(20).all()
 
+    # ==================================================================
+    # 💰 NUEVO: VALORIZACIONES ECONÓMICAS (GERENCIALES)
+    # ==================================================================
+    # Suma total de costo_total invertido/gastado en las salidas de combustible activas
+    valor_consumo_scalar = db.session.query(func.sum(Kardex.costo_total)).filter(
+        Kardex.tipo == "SALIDA", Kardex.activo == True
+    ).scalar()
+    valor_total_consumo = float(valor_consumo_scalar) if valor_consumo_scalar else 0.0
+
+    # Valorización monetaria del inventario actual en tanques (Stock * Precio Promedio Ponderado)
+    # Usamos db.session.query para hacer la matemática directa y veloz en la base de datos
+    valor_inventario_scalar = db.session.query(
+        func.sum(Tanque.stock_actual * Tanque.precio_promedio)
+    ).scalar()
+    valor_total_inventario = float(valor_inventario_scalar) if valor_inventario_scalar else 0.0
+
     return render_template(
         "dashboard_gerencial.html",
 
@@ -2051,7 +2158,10 @@ def dashboard_gerencial():
         por_vehiculo=por_vehiculo,
         por_operador=por_operador,
 
-        movimientos=movimientos
+        movimientos=movimientos,
+        # Variables financieras añadidas:
+        valor_total_consumo=round(valor_total_consumo, 2),
+        valor_total_inventario=round(valor_total_inventario, 2)
     )
 
 if __name__ == "__main__":

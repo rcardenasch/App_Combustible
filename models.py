@@ -160,7 +160,7 @@ class Tanque(db.Model):
 
     id = db.Column(db.Integer, primary_key=True)
     nombre = db.Column(db.String(100), nullable=False)
-
+    precio_promedio = db.Column(db.Float,default=0)
     capacidad = db.Column(db.Float, nullable=False)
     stock_actual = db.Column(db.Float, default=0)
     stock_minimo = db.Column(db.Float, default=0)
@@ -182,6 +182,12 @@ class Kardex(db.Model):
     # ENTRADA (tanque) / SALIDA (vehículo) / OPERACION (solo horómetro)
 
     fecha = db.Column(db.DateTime, default=now_lima)
+
+    # NUEVOS CAMPOS
+    precio_unitario = db.Column(db.Float, default=0)
+    costo_total = db.Column(db.Float, default=0)
+    proveedor = db.Column(db.String(150))
+    factura = db.Column(db.String(50))
 
     # relaciones
     tanque_id = db.Column(db.Integer, db.ForeignKey("tanques.id"), nullable=True)
