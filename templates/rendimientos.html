@@ -7,16 +7,18 @@
 
 <!-- KPIs -->
 <div class="row g-3">
-        <form method="GET" action="{{ url_for('rendimiento_list') }}">
+    <form method="GET" action="{{ url_for('rendimiento_list') }}">
 
         <div class="row mb-3">
 
-            <div class="col-md-4">
+            <div class="col-md-12 mb-2">
+                <label class="form-label fw-bold text-secondary small text-uppercase">Proyecto</label>
 
-                <select name="proyecto_id" class="form-select" onchange="this.form.submit()">
+                <select name="proyecto_id" class="form-select border-warning-subtle shadow-sm"
+                    onchange="this.form.submit()">
 
                     <option value="">
-                        TODOS LOS PROYECTOS
+                        Todos los proyectos
                     </option>
 
                     {% for p in proyectos %}
@@ -52,7 +54,8 @@
     <div class="col-md-4 col-lg-2">
         <div class="card border-0 shadow-sm h-100">
             <div class="card-body p-3 text-center">
-                <div class="avatar-sm bg-info-subtle text-info rounded-circle mx-auto mb-2 d-flex align-items-center justify-content-center" style="width: 40px; height: 40px;">
+                <div class="avatar-sm bg-info-subtle text-info rounded-circle mx-auto mb-2 d-flex align-items-center justify-content-center"
+                    style="width: 40px; height: 40px;">
                     <i class="bi bi-fuel-pump-fill"></i>
                 </div>
                 <div class="text-muted small fw-bold">CONSUMO TOTAL</div>
@@ -65,7 +68,8 @@
     <div class="col-md-4 col-lg-2">
         <div class="card border-0 shadow-sm h-100">
             <div class="card-body p-3 text-center">
-                <div class="avatar-sm bg-secondary-subtle text-secondary rounded-circle mx-auto mb-2 d-flex align-items-center justify-content-center" style="width: 40px; height: 40px;">
+                <div class="avatar-sm bg-secondary-subtle text-secondary rounded-circle mx-auto mb-2 d-flex align-items-center justify-content-center"
+                    style="width: 40px; height: 40px;">
                     <i class="bi bi-hourglass-split"></i>
                 </div>
                 <div class="text-muted small fw-bold">HORAS/KM</div>
@@ -116,7 +120,8 @@
         <div class="card border-0 shadow-sm p-4">
             <div class="d-flex justify-content-between align-items-center mb-3">
                 <h6 class="fw-bold mb-0"><i class="bi bi-bar-chart me-2"></i>Rendimiento por Vehículo</h6>
-                <button class="btn btn-sm btn-outline-light text-dark border-0"><i class="bi bi-three-dots"></i></button>
+                <button class="btn btn-sm btn-outline-light text-dark border-0"><i
+                        class="bi bi-three-dots"></i></button>
             </div>
             <div style="height: 300px;">
                 <canvas id="vehiculoChart"></canvas>
@@ -128,7 +133,8 @@
         <div class="card border-0 shadow-sm p-4">
             <div class="d-flex justify-content-between align-items-center mb-3">
                 <h6 class="fw-bold mb-0"><i class="bi bi-pie-chart me-2"></i>Distribución por Proyecto</h6>
-                <button class="btn btn-sm btn-outline-light text-dark border-0"><i class="bi bi-three-dots"></i></button>
+                <button class="btn btn-sm btn-outline-light text-dark border-0"><i
+                        class="bi bi-three-dots"></i></button>
             </div>
             <div style="height: 300px;">
                 <canvas id="proyectoChart"></canvas>
@@ -140,7 +146,8 @@
 <!-- TABLA DETALLE -->
 <div class="card border-0 shadow-sm mt-4 overflow-hidden">
     <div class="card-header bg-white py-3 border-0">
-        <h6 class="fw-bold mb-0"><i class="bi bi-list-check me-2 text-primary"></i>Detalle de Rendimientos Analizados</h6>
+        <h6 class="fw-bold mb-0"><i class="bi bi-list-check me-2 text-primary"></i>Detalle de Rendimientos Analizados
+        </h6>
     </div>
     <div class="card-body p-0">
         <div class="table-responsive">
@@ -167,15 +174,18 @@
                         </td>
                         <td class="text-center pe-4">
                             {% if r.estado == "BAJO" %}
-                            <span class="badge bg-danger-subtle text-danger border border-danger-subtle rounded-pill px-3">
+                            <span
+                                class="badge bg-danger-subtle text-danger border border-danger-subtle rounded-pill px-3">
                                 <i class="bi bi-arrow-down-short"></i> BAJO
                             </span>
                             {% elif r.estado == "ALTO" %}
-                            <span class="badge bg-warning-subtle text-warning-emphasis border border-warning-subtle rounded-pill px-3">
+                            <span
+                                class="badge bg-warning-subtle text-warning-emphasis border border-warning-subtle rounded-pill px-3">
                                 <i class="bi bi-exclamation-triangle"></i> ALTO
                             </span>
                             {% else %}
-                            <span class="badge bg-success-subtle text-success border border-success-subtle rounded-pill px-3">
+                            <span
+                                class="badge bg-success-subtle text-success border border-success-subtle rounded-pill px-3">
                                 <i class="bi bi-check-circle"></i> ÓPTIMO
                             </span>
                             {% endif %}
@@ -217,27 +227,27 @@
 </script>
 
 <script>
-$(document).ready(function () {
+    $(document).ready(function () {
 
-    $('#tablaRendimientos').DataTable({
+        $('#tablaRendimientos').DataTable({
 
-        pageLength: 10,  // paginación automática
-        responsive: true,
+            pageLength: 10,  // paginación automática
+            responsive: true,
 
-        language: {
-            search: "🔍 Buscar:",
-            lengthMenu: "Mostrar _MENU_ registros",
-            info: "Mostrando _START_ a _END_ de _TOTAL_ registros",
-            paginate: {
-                previous: "Anterior",
-                next: "Siguiente"
-            },
-            zeroRecords: "No se encontraron resultados"
-        }
+            language: {
+                search: "🔍 Buscar:",
+                lengthMenu: "Mostrar _MENU_ registros",
+                info: "Mostrando _START_ a _END_ de _TOTAL_ registros",
+                paginate: {
+                    previous: "Anterior",
+                    next: "Siguiente"
+                },
+                zeroRecords: "No se encontraron resultados"
+            }
+
+        });
 
     });
-
-});
 </script>
 
 {% endblock %}

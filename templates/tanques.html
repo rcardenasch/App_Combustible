@@ -191,13 +191,11 @@ MODALES EDITAR
                 </div>
 
                 <div class="modal-body p-4">
-                    <div class="col-md-4">
+                    <div class="col-md-12 mb-2">
 
-                        <label class="form-label fw-semibold">
-                            Proyecto
-                        </label>
+                        <label class="form-label fw-bold text-secondary small text-uppercase">Proyecto Asignado</label>
 
-                        <select name="proyecto_id" class="form-select" required>
+                        <select name="proyecto_id" class="form-select border-warning-subtle shadow-sm" required>
 
                             {% for p in proyectos %}
 
@@ -307,12 +305,14 @@ MODAL NUEVO
 
                     <div class="row mb-3">
 
-                        <div class="col-md-4">
+                        <div class="col-md-12 mb-2">
 
-                            <select name="proyecto_id" class="form-select" required>
+                            <label class="form-label fw-bold text-secondary small text-uppercase">Asignación de Proyecto</label>
+
+                            <select name="proyecto_id" class="form-select border-warning-subtle shadow-sm" required>
 
                                 <option value="">
-                                    TODOS LOS PROYECTOS
+                                    Seleccionar Proyecto
                                 </option>
 
                                 {% for p in proyectos %}
