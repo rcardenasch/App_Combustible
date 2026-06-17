@@ -144,13 +144,18 @@
 
                 <div class="modal-body p-4">
                     <!-- PROYECTO -->
-                    <div class="col-md-6">
-                        <label class="form-label fw-semibold">Proyecto</label>
+                    <div class="col-md-12 mb-2">
+
+                        <label class="form-label fw-bold text-secondary small text-uppercase">Proyecto</label>
                         <div class="input-group">
                             <!-- Icono cambiado a bi-folder2-open y color text-primary para mayor profesionalismo -->
                             <span class="input-group-text bg-white"><i
                                     class="bi bi-folder2-open text-primary"></i></span>
-                            <select name="proyecto_id" id="proyecto" class="form-select">
+                            <select name="proyecto_id" id="proyecto" class="form-select border-warning-subtle shadow-sm"
+                                required>
+                                <option value="" disabled>
+                                    --Seleccione Proyecto--
+                                </option>
                                 {% for t in proyectos %}
                                 <option value="{{ t.id }}" {% if loop.first %}selected{% endif %}>
                                     {{ t.nombre_corto }}
