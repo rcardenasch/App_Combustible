@@ -13,12 +13,26 @@ document.addEventListener("DOMContentLoaded", function () {
             fetch(`/kardex/ultimo_horometro/${vehiculoId}`)
                 .then(res => res.json())
                 .then(data => {
+                    const horometroInicialInput = document.getElementById("horometro_inicial");
+                    const tipoOperacion = document.getElementById("tipo").value;
+                    
+                    // Asigna el valor al input
+                    horometroInicialInput.value = data.horometro_final || 0;
 
-                    document.getElementById("horometro_inicial").value =
-                        data.horometro_final || 0;
-
-                    document.getElementById("horometro_inicial_view").innerText =
-                        data.horometro_final || 0;
+                    // 🔥 CAMBIO TEMPORAL: Si es SALIDA, se permite editar SIEMPRE
+                    if (tipoOperacion === "SALIDA") {
+                        horometroInicialInput.removeAttribute("readonly");
+                        horometroInicialInput.classList.remove("bg-secondary-subtle");
+                    } else {
+                        // Para OPERACION u otros, solo edita si es cero (0)
+                        if (!data.horometro_final || data.horometro_final == 0) {
+                            horometroInicialInput.removeAttribute("readonly");
+                            horometroInicialInput.classList.remove("bg-secondary-subtle");
+                        } else {
+                            horometroInicialInput.setAttribute("readonly", true);
+                            horometroInicialInput.classList.add("bg-secondary-subtle");
+                        }
+                    }
                 });
 
         });
@@ -28,22 +42,24 @@ document.addEventListener("DOMContentLoaded", function () {
 });
 
 $('#modalNuevo').on('hidden.bs.modal', function () {
-
     $("#formKardex")[0].reset();
+
+    // Restablece el input de horómetro inicial a su estado por defecto
+    $("#horometro_inicial")
+        .val("0.00")
+        .attr("readonly", true)
+        .addClass("bg-secondary-subtle");
 
     $("#vehiculo").prop("disabled", false);
     $("#horometro_final").prop("disabled", false);
     $("#tanque_lleno").prop("disabled", false);
 
     $("#alertStock").addClass("d-none");
-    // 🔥 RESET BOTÓN
     enviando = false;
 
     $("#btnGuardar")
         .prop("disabled", false)
         .html('<i class="bi bi-check-circle me-1"></i> Procesar Movimiento');
-
-
 });
 
  $(document).ready(function () {
@@ -126,34 +142,32 @@ $("#tipo").on("change", function () {
 });
 
 function toggleCamposPorTipo() {
-
     const tipo = $("#tipo").val();
-
     const vehiculo = $("#vehiculo");
     const horoFinal = $("#horometro_final");
     const tanqueLleno = $("#tanque_lleno");
+    const horoInicial = $("#horometro_inicial"); // Nueva constante
 
     if (tipo === "ENTRADA") {
-
         vehiculo.prop("disabled", true).val("");
         horoFinal.prop("disabled", true).val("");
         tanqueLleno.prop("checked", false).prop("disabled", true);
+        
+        // Bloquea por completo el campo inicial en las entradas
+        horoInicial.val("0.00").prop("disabled", true).addClass("bg-secondary-subtle");
 
     } else if (tipo === "SALIDA") {
-
         vehiculo.prop("disabled", false);
         horoFinal.prop("disabled", false);
         tanqueLleno.prop("disabled", false);
+        horoInicial.prop("disabled", false); // Habilita el envío del input
 
     } else {
-
-        // OPERACION
         vehiculo.prop("disabled", false);
         horoFinal.prop("disabled", false);
         tanqueLleno.prop("checked", false).prop("disabled", true);
-
+        horoInicial.prop("disabled", false);
     }
-
 }
 let kardexIdEliminar = null;
 

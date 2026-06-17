@@ -268,11 +268,14 @@
 
                     <!-- SECCIÓN MÉTRICAS: HORÓMETROS -->
                     <div class="row g-3 bg-light p-3 rounded border">
+
                         <div class="col-md-6">
                             <label class="form-label small fw-bold">Horómetro anterior</label>
-                            <input type="hidden" name="horometro_inicial" id="horometro_inicial">
-                            <div class="form-control bg-secondary-subtle fw-mono" id="horometro_inicial_view">0.00</div>
+                            <!-- Eliminamos el input hidden y convertimos el div en este input text -->
+                            <input type="text" name="horometro_inicial" id="horometro_inicial"
+                                class="form-control bg-secondary-subtle fw-mono" value="0.00" readonly>
                         </div>
+
                         <div class="col-md-6">
                             <label class="form-label small fw-bold">Horómetro de abastecimiento</label>
                             <input type="number" step="0.01" name="horometro_final" id="horometro_final"

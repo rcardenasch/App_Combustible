@@ -1047,10 +1047,19 @@ def kardex_nuevo():
                 return redirect(url_for("kardex_list"))
 
         # =========================
-        # 🔥 ÚLTIMO HORÓMETRO REAL
+        # 🔥 HORÓMETRO INICIAL (EDITABLE / RESPALDO AUTOMÁTICO)
         # =========================
         h_inicial = 0
-        if vehiculo_id:
+        h_inicial_form = request.form.get("horometro_inicial")
+        print(h_inicial_form)
+        try:
+            # Intentamos usar el valor editado por el usuario en el formulario
+            h_inicial = float(h_inicial_form) if h_inicial_form else 0.0
+        except ValueError:
+            h_inicial = 0.0
+
+        # Si el usuario no ingresó nada o es 0, buscamos el último de la base de datos como respaldo
+        if h_inicial == 0 and vehiculo_id:
             vehiculo_id = int(vehiculo_id)
 
             ultimo = Kardex.query.filter(
