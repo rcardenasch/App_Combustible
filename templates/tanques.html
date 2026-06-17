@@ -191,6 +191,25 @@ MODALES EDITAR
                 </div>
 
                 <div class="modal-body p-4">
+                    <div class="col-md-4">
+
+                        <label class="form-label fw-semibold">
+                            Proyecto
+                        </label>
+
+                        <select name="proyecto_id" class="form-select" required>
+
+                            {% for p in proyectos %}
+
+                            <option value="{{ p.id }}" {% if t.proyecto_id==p.id %} selected {% endif %}>
+                                {{ p.nombre }}
+                            </option>
+
+                            {% endfor %}
+
+                        </select>
+
+                    </div>
 
                     <div class="row g-3">
 
@@ -285,6 +304,30 @@ MODAL NUEVO
                 </div>
 
                 <div class="modal-body p-4">
+
+                    <div class="row mb-3">
+
+                        <div class="col-md-4">
+
+                            <select name="proyecto_id" class="form-select" required>
+
+                                <option value="">
+                                    TODOS LOS PROYECTOS
+                                </option>
+
+                                {% for p in proyectos %}
+
+                                <option value="{{ p.id }}" {% if proyecto_id==p.id %} selected {% endif %}>
+                                    {{ p.nombre }}
+                                </option>
+
+                                {% endfor %}
+
+                            </select>
+
+                        </div>
+
+                    </div>
 
                     <div class="row g-3">
 

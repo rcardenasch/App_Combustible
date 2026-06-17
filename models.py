@@ -238,6 +238,7 @@ class Rendimiento(db.Model):
     id = db.Column(db.Integer, primary_key=True)
 
     vehiculo_id = db.Column(db.Integer, db.ForeignKey("vehiculos.id"))
+    proyecto_id = db.Column(db.Integer,db.ForeignKey("proyectos.id"), nullable=False,index=True)
 
     fecha = db.Column(db.DateTime, default=now_lima)
 
@@ -254,6 +255,10 @@ class Rendimiento(db.Model):
     tipo_control = db.Column(db.String(20))  # "PARCIAL" o "TANQUE_LLENO"
 
     observacion = db.Column(db.Text)
+    
+    proyecto = db.relationship(
+        "Proyecto"
+    )
 
 
 

@@ -846,7 +846,6 @@ def tanques_nuevo():
 
         try:
             capacidad = float(capacidad)
-            stock = float(stock)
             minimo = float(minimo)
         except:
             flash("Valores numéricos inválidos", "danger")
@@ -871,7 +870,6 @@ def tanques_nuevo():
 
     return redirect(url_for("tanques_list"))
 
-
 @app.route("/tanques/editar/<int:id>", methods=["POST"])
 @login_required
 @permission_required("tanques", "editar")
@@ -880,21 +878,43 @@ def tanques_editar(id):
     tanque = Tanque.query.get_or_404(id)
 
     try:
+
         tanque.nombre = request.form.get("nombre")
-        tanque.capacidad = float(request.form.get("capacidad") or 0)
-        tanque.stock_actual = float(request.form.get("stock_actual") or 0)
-        tanque.stock_minimo = float(request.form.get("stock_minimo") or 0)
+        tanque.proyecto_id = int(
+            request.form.get("proyecto_id")
+        )
+
+        tanque.capacidad = float(
+            request.form.get("capacidad") or 0
+        )
+
+        tanque.stock_actual = float(
+            request.form.get("stock_actual") or 0
+        )
+
+        tanque.stock_minimo = float(
+            request.form.get("stock_minimo") or 0
+        )
 
         db.session.commit()
 
-        flash("Tanque actualizado", "success")
+        flash(
+            "Tanque actualizado",
+            "success"
+        )
 
     except Exception as e:
+
         db.session.rollback()
-        flash(f"Error: {str(e)}", "danger")
 
-    return redirect(url_for("tanques_list"))
+        flash(
+            f"Error: {str(e)}",
+            "danger"
+        )
 
+    return redirect(
+        url_for("tanques_list")
+    )
 
 @app.route("/tanques/eliminar/<int:id>", methods=["POST"])
 @login_required
@@ -939,7 +959,7 @@ def kardex_list():
 def kardex_nuevo():
 
     try:
-        poyecto_id=request.form.get("proyecto_id")
+        proyecto_id=request.form.get("proyecto_id")
         tipo = request.form.get("tipo")
         tanque_id = request.form.get("tanque_id")
         vehiculo_id = request.form.get("vehiculo_id")
@@ -1122,7 +1142,7 @@ def kardex_nuevo():
         nuevo = Kardex(
             tipo=tipo,
             fecha=fecha_movimiento,
-            proyecto_id=poyecto_id,
+            proyecto_id=proyecto_id,
             tanque_id=int(tanque_id) if tanque_id else None,
             vehiculo_id=vehiculo_id,
             usuario_id=current_user.id,
@@ -1234,7 +1254,8 @@ def kardex_nuevo():
                                 vehiculo_id=vehiculo_id
                             )
                             db.session.add(alerta)
-
+                    
+                    
                     nuevo_rend = Rendimiento(
                         vehiculo_id=vehiculo_id,
                         consumo_total=consumo_total,
@@ -1244,7 +1265,8 @@ def kardex_nuevo():
                         tipo_control="TANQUE_LLENO",
                         observacion="Control tanque lleno",
                         horometro_abastecimiento_inicial=h_ini,
-                        horometro_abastecimiento_final=h_fin
+                        horometro_abastecimiento_final=h_fin,
+                        proyecto_id=nuevo.proyecto_id
                     )
                     db.session.add(nuevo_rend)
 
@@ -1472,7 +1494,8 @@ def recalcular_rendimientos_vehiculo(vehiculo_id):
             tipo_control="TANQUE_LLENO",
             observacion="Recalculado automáticamente",
             horometro_abastecimiento_inicial=h_ini,
-            horometro_abastecimiento_final=h_fin
+            horometro_abastecimiento_final=h_fin,
+            proyecto_id=actual.proyecto_id
         )
         db.session.add(nuevo_rend)
 
@@ -1505,64 +1528,136 @@ def rendimiento_list():
 
     from sqlalchemy import func
 
+    proyecto_id = request.args.get(
+    "proyecto_id",
+    type=int
+    )
+    proyectos = Proyecto.query.filter_by(
+    activo=True
+    ).all()
+
+    # =========================
+    # FILTRO BASE
+    # =========================
+    filtro = []
+
+    if proyecto_id:
+        filtro.append(
+        Rendimiento.proyecto_id == proyecto_id
+    )
+
     # =========================
     # KPIs GENERALES
     # =========================
-    total = db.session.query(func.count(Rendimiento.id)).scalar() or 0
+    total = db.session.query(
+        func.count(Rendimiento.id)
+    ).filter(
+        *filtro
+    ).scalar() or 0
 
     promedio = db.session.query(
         func.avg(Rendimiento.rendimiento_calculado)
+    ).filter(
+        *filtro
     ).scalar() or 0
 
     total_consumo = db.session.query(
         func.sum(Rendimiento.consumo_total)
+    ).filter(
+        *filtro
     ).scalar() or 0
 
     total_recorrido = db.session.query(
         func.sum(Rendimiento.recorrido_total)
+    ).filter(
+        *filtro
     ).scalar() or 0
 
-    bajos = db.session.query(func.count(Rendimiento.id))\
-        .filter(Rendimiento.estado == "BAJO").scalar() or 0
+    bajos = db.session.query(
+        func.count(Rendimiento.id)
+    ).filter(
+        Rendimiento.estado == "BAJO",
+        *filtro
+    ).scalar() or 0
 
-    porcentaje_bajo = (bajos / total * 100) if total > 0 else 0
+    porcentaje_bajo = (
+        bajos / total * 100
+    ) if total > 0 else 0
 
-    ultimo = Rendimiento.query.order_by(Rendimiento.fecha.desc()).first()
+    ultimo = (
+        Rendimiento.query
+        .filter(*filtro)
+        .order_by(Rendimiento.fecha.desc())
+        .first()
+    )
 
-    tanque_lleno = db.session.query(func.count(Rendimiento.id))\
-        .filter(Rendimiento.tipo_control == "TANQUE_LLENO").scalar()
+    tanque_lleno = db.session.query(
+        func.count(Rendimiento.id)
+    ).filter(
+        Rendimiento.tipo_control == "TANQUE_LLENO",
+        *filtro
+    ).scalar() or 0
 
     # =========================
     # AGRUPACIÓN POR VEHÍCULO
     # =========================
-    por_vehiculo = db.session.query(
-        Vehiculo.nombre,
-        func.avg(Rendimiento.rendimiento_calculado),
-        func.count(Rendimiento.id)
-    ).join(Vehiculo)\
-     .group_by(Vehiculo.nombre).all()
+    por_vehiculo = (
+        db.session.query(
+            Vehiculo.nombre,
+            func.avg(
+                Rendimiento.rendimiento_calculado
+            ),
+            func.count(
+                Rendimiento.id
+            )
+        )
+        .join(
+            Vehiculo,
+            Vehiculo.id == Rendimiento.vehiculo_id
+        )
+        .filter(
+            *filtro
+        )
+        .group_by(
+            Vehiculo.nombre
+        )
+        .all()
+    )
 
     # =========================
     # AGRUPACIÓN POR PROYECTO
     # =========================
-    por_proyecto = db.session.query(
+    por_proyecto = (
+    db.session.query(
         Proyecto.nombre,
-        func.avg(Rendimiento.rendimiento_calculado)
-    ).join(Vehiculo, Vehiculo.proyecto_id == Proyecto.id)\
-     .join(Rendimiento, Rendimiento.vehiculo_id == Vehiculo.id)\
-     .group_by(Proyecto.nombre).all()
+        func.avg(
+            Rendimiento.rendimiento_calculado
+        )
+    )
+    .join(
+        Rendimiento,
+        Rendimiento.proyecto_id == Proyecto.id
+    )
+    .filter(
+        *filtro
+    )
+    .group_by(
+        Proyecto.nombre
+    )
+    .all()
+    )
 
     return render_template(
         "rendimientos.html",
-        lista=Rendimiento.query.order_by(Rendimiento.fecha.desc()).all(),
-
+        lista=(Rendimiento.query.filter(*filtro).order_by(Rendimiento.fecha.desc()).all()),
         promedio=round(promedio, 2),
         total_consumo=round(total_consumo, 2),
         total_recorrido=round(total_recorrido, 2),
         porcentaje_bajo=round(porcentaje_bajo, 1),
         ultimo=ultimo.rendimiento_calculado if ultimo else 0,
         tanque_lleno=tanque_lleno,
-
+        proyectos=proyectos,
+        proyecto_id=proyecto_id,
         por_vehiculo=por_vehiculo,
         por_proyecto=por_proyecto
     )
@@ -1957,32 +2052,53 @@ def reporte_rendimiento():
         download_name=f"reporte_{tipo}.xlsx",
         mimetype="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
     )
+
+
 @app.route("/dashboard")
 @login_required
 def dashboard():
+
+    proyecto_id = request.args.get(
+    "proyecto_id",
+    type=int
+    )
+    proyectos = Proyecto.query.filter_by(
+    activo=True
+    ).all()
+
+    # Filtros del dashboard
+    filtro = [
+        Kardex.activo == True
+    ]
+
+    if proyecto_id:
+        filtro.append(
+            Kardex.proyecto_id == proyecto_id
+        )
+
     # 1. Lista de últimos movimientos (Sintaxis 2.0 limpia)
     lista = db.session.scalars(
         db.select(Kardex)
-        .where(Kardex.tipo == "SALIDA", Kardex.activo == True)
+        .where(Kardex.tipo == "SALIDA", *filtro)
         .order_by(Kardex.fecha.desc())
         .limit(10) # Acotamos a los últimos 10 para no saturar el servidor
     ).all()
 
     # 2. Consumo Total de Combustible
     total_consumo_scalar = db.session.query(func.sum(Kardex.cantidad)).filter(
-        Kardex.tipo == "SALIDA", Kardex.activo == True
+        Kardex.tipo == "SALIDA", *filtro
     ).scalar()
     total_consumo = float(total_consumo_scalar) if total_consumo_scalar else 0.0
 
     # 3. Total de Despachos (Conteo)
     total_abastecimientos = db.session.scalar(
-        db.select(func.count(Kardex.id)).where(Kardex.tipo == "SALIDA", Kardex.activo == True)
+        db.select(func.count(Kardex.id)).where(Kardex.tipo == "SALIDA", *filtro)
     ) or 0
 
     # 4. CORRECCIÓN: Conteo correcto de Vehículos Únicos Activos
     vehiculos_activos = db.session.scalar(
         db.select(func.count(Kardex.vehiculo_id.distinct())).where(
-            Kardex.tipo == "SALIDA", Kardex.activo == True
+            Kardex.tipo == "SALIDA", *filtro
         )
     ) or 0
 
@@ -1992,19 +2108,20 @@ def dashboard():
     # 6. CORRECCIÓN GRÁFICOS: Mapeo seguro convirtiendo Decimal a float
     por_vehiculo_raw = db.session.query(Vehiculo.nombre, func.sum(Kardex.cantidad))\
         .join(Kardex, Kardex.vehiculo_id == Vehiculo.id)\
-        .filter(Kardex.tipo == "SALIDA", Kardex.activo == True)\
+        .filter(Kardex.tipo == "SALIDA", *filtro)\
         .group_by(Vehiculo.nombre).all()
     por_vehiculo = [[v[0], float(v[1])] for v in por_vehiculo_raw]
 
     por_operador_raw = db.session.query(Operador.nombre, func.sum(Kardex.cantidad))\
         .join(Kardex, Kardex.operador_id == Operador.id)\
-        .filter(Kardex.tipo == "SALIDA", Kardex.activo == True)\
+        .filter(Kardex.tipo == "SALIDA", *filtro)\
         .group_by(Operador.nombre).all()
     por_operador = [[o[0], float(o[1])] for o in por_operador_raw]
 
     # 7. Información de tanques e inventario físico total
     total_tanques = db.session.scalar(db.select(func.count(Tanque.id))) or 0
     stock_total_scalar = db.session.query(func.sum(Tanque.stock_actual)).scalar()
+    
     stock_total = float(stock_total_scalar) if stock_total_scalar else 0.0
 
     # ==================================================================
@@ -2032,13 +2149,31 @@ def dashboard():
         total_tanques=total_tanques,
         stock_total=round(stock_total, 2),
         alertas_criticas=alertas_criticas,
-        tanques_criticos=tanques_criticos
+        tanques_criticos=tanques_criticos,
+        proyectos=proyectos,
+        proyecto_id=proyecto_id
     )
 
 @app.route("/dashboard/gerencial")
 @login_required
 def dashboard_gerencial():
 
+    proyecto_id = request.args.get(
+        "proyecto_id",
+        type=int
+        )
+    proyectos = Proyecto.query.filter_by(
+        activo=True
+        ).all()
+    # Filtros del dashboard
+    filtro = [
+            Kardex.activo == True
+        ]
+
+    if proyecto_id:
+            filtro.append(
+                Kardex.proyecto_id == proyecto_id
+            )
     # ==========================
     # KPI GENERALES
     # ==========================
@@ -2047,22 +2182,30 @@ def dashboard_gerencial():
         func.sum(Kardex.cantidad)
     ).filter(
         Kardex.tipo == "ENTRADA",
-        Kardex.activo == True
+        *filtro
     ).scalar() or 0
 
     total_consumo = db.session.query(
         func.sum(Kardex.cantidad)
     ).filter(
         Kardex.tipo == "SALIDA",
-        Kardex.activo == True
+        *filtro
     ).scalar() or 0
 
-    total_operaciones = Kardex.query.filter_by(
-    activo=True).count()
+    total_operaciones = Kardex.query.filter(
+    *filtro).count()
 
-    stock_total = db.session.query(
+    query_tanque = db.session.query(
         func.sum(Tanque.stock_actual)
-    ).scalar() or 0
+    )
+
+    if proyecto_id:
+
+        query_tanque = query_tanque.filter(
+            Tanque.proyecto_id == proyecto_id
+        )
+
+    stock_total = query_tanque.scalar() or 0
 
     total_tanques = Tanque.query.count()
 
@@ -2073,16 +2216,19 @@ def dashboard_gerencial():
     # ==========================
     # COMPRAS VS CONSUMO
     # ==========================
+    compras = db.session.query(
+    func.sum(Kardex.cantidad)
+    ).filter(
+        Kardex.tipo == "ENTRADA",
+        *filtro
+    ).scalar() or 0
 
-    compras = Kardex.query.filter_by(
-        tipo="ENTRADA",
-        activo = True
-    ).count()
-
-    consumos = Kardex.query.filter_by(
-        tipo="SALIDA",
-        activo = True
-    ).count()
+    consumos = db.session.query(
+    func.sum(Kardex.cantidad)
+    ).filter(
+        Kardex.tipo == "SALIDA",
+        *filtro
+    ).scalar() or 0
 
     # ==========================
     # TOP VEHICULOS
@@ -2096,7 +2242,7 @@ def dashboard_gerencial():
         Kardex.vehiculo_id == Vehiculo.id
     ).filter(
         Kardex.tipo == "SALIDA",
-        Kardex.activo == True
+        *filtro
     ).group_by(
         Vehiculo.nombre
     ).all()
@@ -2113,7 +2259,7 @@ def dashboard_gerencial():
         Kardex.operador_id == Operador.id
     ).filter(
         Kardex.tipo == "SALIDA",
-        Kardex.activo == True
+        *filtro
     ).group_by(
         Operador.nombre
     ).all()
@@ -2123,7 +2269,7 @@ def dashboard_gerencial():
     # ==========================
 
     movimientos = Kardex.query.filter(
-    Kardex.activo == True).order_by(
+    *filtro).order_by(
         Kardex.fecha.desc()
     ).limit(20).all()
 
@@ -2132,7 +2278,7 @@ def dashboard_gerencial():
     # ==================================================================
     # Suma total de costo_total invertido/gastado en las salidas de combustible activas
     valor_consumo_scalar = db.session.query(func.sum(Kardex.costo_total)).filter(
-        Kardex.tipo == "SALIDA", Kardex.activo == True
+        Kardex.tipo == "SALIDA", *filtro
     ).scalar()
     valor_total_consumo = float(valor_consumo_scalar) if valor_consumo_scalar else 0.0
 
@@ -2143,6 +2289,8 @@ def dashboard_gerencial():
     ).scalar()
     valor_total_inventario = float(valor_inventario_scalar) if valor_inventario_scalar else 0.0
 
+    print(movimientos)
+    
     return render_template(
         "dashboard_gerencial.html",
 
@@ -2164,7 +2312,9 @@ def dashboard_gerencial():
         movimientos=movimientos,
         # Variables financieras añadidas:
         valor_total_consumo=round(valor_total_consumo, 2),
-        valor_total_inventario=round(valor_total_inventario, 2)
+        valor_total_inventario=round(valor_total_inventario, 2),
+        proyectos=proyectos,
+        proyecto_id=proyecto_id,
     )
 
 if __name__ == "__main__":

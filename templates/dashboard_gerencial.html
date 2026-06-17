@@ -7,411 +7,440 @@
 </h3>
 
 <!-- KPI PRINCIPALES -->
+<div class="row">
 
-<div class="row g-3">
+    <form method="GET" action="{{ url_for('dashboard_gerencial') }}">
 
-    <div class="col-md-3">
-        <div class="card border-0 shadow-sm border-start border-success border-4 h-100">
-            <div class="card-body">
-                <div class="text-muted small fw-bold">COMPRAS</div>
-                <h2 class="fw-bold text-success mb-0">
-                    {{ "%.2f"|format(total_compras) }}
-                </h2>
-                <small class="text-muted">
-                    Galones ingresados
-                </small>
-            </div>
-        </div>
-    </div>
+        <div class="row mb-3">
 
-    <div class="col-md-3">
-        <div class="card border-0 shadow-sm border-start border-danger border-4 h-100">
-            <div class="card-body">
-                <div class="text-muted small fw-bold">CONSUMO</div>
-                <h2 class="fw-bold text-danger mb-0">
-                    {{ "%.2f"|format(total_consumo) }}
-                </h2>
-                <small class="text-muted">
-                    Galones despachados
-                </small>
-            </div>
-        </div>
-    </div>
+            <div class="col-md-4">
 
-    <div class="col-md-3">
-        <div class="card border-0 shadow-sm border-start border-primary border-4 h-100">
-            <div class="card-body">
-                <div class="text-muted small fw-bold">STOCK ACTUAL</div>
-                <h2 class="fw-bold text-primary mb-0">
-                    {{ "%.2f"|format(stock_total) }}
-                </h2>
-                <small class="text-muted">
-                    Galones disponibles
-                </small>
-            </div>
-        </div>
-    </div>
+                <select name="proyecto_id" class="form-select" onchange="this.form.submit()">
 
-    <div class="col-md-3">
-        <div class="card border-0 shadow-sm border-start border-warning border-4 h-100">
-            <div class="card-body">
-                <div class="text-muted small fw-bold">BALANCE</div>
-                <h2 class="fw-bold text-warning mb-0">
-                    {{ "%.2f"|format(balance) }}
-                </h2>
-                <small class="text-muted">
-                    Compras - Consumo
-                </small>
-            </div>
-        </div>
-    </div>
+                    <option value="">
+                        TODOS LOS PROYECTOS
+                    </option>
 
-</div>
-<!-- 💰 SECCIÓN DE VALORIZACIONES ECONÓMICAS -->
-<div class="row g-3 mt-1 mb-4">
-    <!-- Valorización Consumo -->
-    <div class="col-md-6">
-        <div class="card border-0 shadow-sm border-start border-warning border-4 bg-white">
-            <div class="card-body p-3">
-                <div class="text-muted small fw-bold text-uppercase">Costo Total Consumido (Gasto)</div>
-                <div class="d-flex align-items-center justify-content-between mt-2">
-                    <h2 class="fw-bold mb-0 text-warning">
-                        S/ {{ "{:,.2f}".format(valor_total_consumo) }}
-                    </h2>
-                    <span class="badge bg-warning-subtle text-warning rounded-pill px-3 py-2 fw-semibold">
-                        <i class="bi bi-cash-stack me-1"></i> Soles Gastados
-                    </span>
-                </div>
-                <small class="text-muted">Representa el valor económico del combustible despachado a la
-                    flota.</small>
-            </div>
-        </div>
-    </div>
+                    {% for p in proyectos %}
 
-    <!-- Valorización Inventario Disponible -->
-    <div class="col-md-6">
-        <div class="card border-0 shadow-sm border-start border-success border-4 bg-white">
-            <div class="card-body p-3">
-                <div class="text-muted small fw-bold text-uppercase">Valor Activo de Inventario (Capital)</div>
-                <div class="d-flex align-items-center justify-content-between mt-2">
-                    <h2 class="fw-bold mb-0 text-success">
-                        S/ {{ "{:,.2f}".format(valor_total_inventario) }}
-                    </h2>
-                    <span class="badge bg-success-subtle text-success rounded-pill px-3 py-2 fw-semibold">
-                        <i class="bi bi-bank me-1"></i> Capital en Tanques
-                    </span>
-                </div>
-                <small class="text-muted">Representa el dinero en stock físico disponible según precio promedio
-                    ponderado.</small>
-            </div>
-        </div>
-    </div>
-</div>
-<!-- KPI SECUNDARIOS -->
-
-<div class="row g-3 mt-2">
-
-    <div class="col-md-4">
-        <div class="card border-0 shadow-sm text-center h-100">
-            <div class="card-body">
-                <i class="bi bi-moisture text-primary fs-2"></i>
-                <h3 class="fw-bold mt-2">{{ total_tanques }}</h3>
-                <small class="text-muted">Tanques</small>
-            </div>
-        </div>
-    </div>
-
-    <div class="col-md-4">
-        <div class="card border-0 shadow-sm text-center h-100">
-            <div class="card-body">
-                <i class="bi bi-truck text-success fs-2"></i>
-                <h3 class="fw-bold mt-2">{{ total_vehiculos }}</h3>
-                <small class="text-muted">Vehículos</small>
-            </div>
-        </div>
-    </div>
-
-    <div class="col-md-4">
-        <div class="card border-0 shadow-sm text-center h-100">
-            <div class="card-body">
-                <i class="bi bi-list-check text-warning fs-2"></i>
-                <h3 class="fw-bold mt-2">{{ total_operaciones }}</h3>
-                <small class="text-muted">Movimientos Kardex</small>
-            </div>
-        </div>
-    </div>
-
-</div>
-
-
-<!-- GRAFICOS -->
-
-<div class="row mt-4 g-4">
-
-    <div class="col-lg-6">
-
-        <div class="card border-0 shadow-sm">
-
-            <div class="card-header bg-white">
-                <h6 class="fw-bold mb-0">
-                    Compras vs Consumos
-                </h6>
-            </div>
-
-            <div class="card-body">
-                <canvas id="chartResumen"></canvas>
-            </div>
-
-        </div>
-
-    </div>
-
-    <div class="col-lg-6">
-
-        <div class="card border-0 shadow-sm">
-
-            <div class="card-header bg-white">
-                <h6 class="fw-bold mb-0">
-                    Consumo por Vehículo
-                </h6>
-            </div>
-
-            <div class="card-body">
-                <canvas id="chartVehiculos"></canvas>
-            </div>
-
-        </div>
-
-    </div>
-
-</div>
-
-<!-- TABLA -->
-
-<div class="card border-0 shadow-sm mt-4">
-
-    <div class="card-header bg-white d-flex justify-content-between align-items-center">
-
-        <h6 class="fw-bold mb-0">
-            <i class="bi bi-clock-history me-2"></i>
-            Historial de Movimientos
-        </h6>
-
-    </div>
-
-    <div class="card-body">
-
-        <div class="table-responsive">
-
-            <table id="tablaMovimientos" class="table table-hover align-middle">
-
-                <thead class="table-light">
-
-                    <tr>
-                        <th>Fecha</th>
-                        <th>Tipo</th>
-                        <th>Tanque</th>
-                        <th>Vehículo</th>
-                        <th>Operador</th>
-                        <th class="text-end">Cantidad</th>
-                        <th>Parte</th>
-                    </tr>
-
-                </thead>
-
-                <tbody>
-
-                    {% for m in movimientos %}
-
-                    <tr>
-
-                        <td>
-                            {{ m.fecha.strftime('%d/%m/%Y %H:%M') }}
-                        </td>
-
-                        <td>
-
-                            {% if m.tipo == "ENTRADA" %}
-
-                            <span class="badge bg-success">
-                                Compra
-                            </span>
-
-                            {% elif m.tipo == "SALIDA" %}
-
-                            <span class="badge bg-danger">
-                                Consumo
-                            </span>
-
-                            {% else %}
-
-                            <span class="badge bg-info">
-                                Operación
-                            </span>
-
-                            {% endif %}
-
-                        </td>
-
-                        <td>
-                            {{ m.tanque.nombre if m.tanque else '-' }}
-                        </td>
-
-                        <td>
-                            {{ m.vehiculo.nombre if m.vehiculo else '-' }}
-                        </td>
-
-                        <td>
-                            {{ m.operador.nombre if m.operador else '-' }}
-                        </td>
-
-                        <td class="text-end fw-bold">
-                            {{ "%.2f"|format(m.cantidad or 0) }}
-                        </td>
-
-                        <td>
-                            {{ m.parte_diario or '-' }}
-                        </td>
-
-                    </tr>
+                    <option value="{{ p.id }}" {% if proyecto_id==p.id %} selected {% endif %}>
+                        {{ p.nombre }}
+                    </option>
 
                     {% endfor %}
 
-                </tbody>
+                </select>
 
-            </table>
+            </div>
+
+        </div>
+
+    </form>
+
+    <div class="row g-3">
+
+        <div class="col-md-3">
+            <div class="card border-0 shadow-sm border-start border-success border-4 h-100">
+                <div class="card-body">
+                    <div class="text-muted small fw-bold">COMPRAS</div>
+                    <h2 class="fw-bold text-success mb-0">
+                        {{ "%.2f"|format(total_compras) }}
+                    </h2>
+                    <small class="text-muted">
+                        Galones ingresados
+                    </small>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-md-3">
+            <div class="card border-0 shadow-sm border-start border-danger border-4 h-100">
+                <div class="card-body">
+                    <div class="text-muted small fw-bold">CONSUMO</div>
+                    <h2 class="fw-bold text-danger mb-0">
+                        {{ "%.2f"|format(total_consumo) }}
+                    </h2>
+                    <small class="text-muted">
+                        Galones despachados
+                    </small>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-md-3">
+            <div class="card border-0 shadow-sm border-start border-primary border-4 h-100">
+                <div class="card-body">
+                    <div class="text-muted small fw-bold">STOCK ACTUAL</div>
+                    <h2 class="fw-bold text-primary mb-0">
+                        {{ "%.2f"|format(stock_total) }}
+                    </h2>
+                    <small class="text-muted">
+                        Galones disponibles
+                    </small>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-md-3">
+            <div class="card border-0 shadow-sm border-start border-warning border-4 h-100">
+                <div class="card-body">
+                    <div class="text-muted small fw-bold">BALANCE</div>
+                    <h2 class="fw-bold text-warning mb-0">
+                        {{ "%.2f"|format(balance) }}
+                    </h2>
+                    <small class="text-muted">
+                        Compras - Consumo
+                    </small>
+                </div>
+            </div>
+        </div>
+
+    </div>
+    <!-- 💰 SECCIÓN DE VALORIZACIONES ECONÓMICAS -->
+    <div class="row g-3 mt-1 mb-4">
+        <!-- Valorización Consumo -->
+        <div class="col-md-6">
+            <div class="card border-0 shadow-sm border-start border-warning border-4 bg-white">
+                <div class="card-body p-3">
+                    <div class="text-muted small fw-bold text-uppercase">Costo Total Consumido (Gasto)</div>
+                    <div class="d-flex align-items-center justify-content-between mt-2">
+                        <h2 class="fw-bold mb-0 text-warning">
+                            S/ {{ "{:,.2f}".format(valor_total_consumo) }}
+                        </h2>
+                        <span class="badge bg-warning-subtle text-warning rounded-pill px-3 py-2 fw-semibold">
+                            <i class="bi bi-cash-stack me-1"></i> Soles Gastados
+                        </span>
+                    </div>
+                    <small class="text-muted">Representa el valor económico del combustible despachado a la
+                        flota.</small>
+                </div>
+            </div>
+        </div>
+
+        <!-- Valorización Inventario Disponible -->
+        <div class="col-md-6">
+            <div class="card border-0 shadow-sm border-start border-success border-4 bg-white">
+                <div class="card-body p-3">
+                    <div class="text-muted small fw-bold text-uppercase">Valor Activo de Inventario (Capital)</div>
+                    <div class="d-flex align-items-center justify-content-between mt-2">
+                        <h2 class="fw-bold mb-0 text-success">
+                            S/ {{ "{:,.2f}".format(valor_total_inventario) }}
+                        </h2>
+                        <span class="badge bg-success-subtle text-success rounded-pill px-3 py-2 fw-semibold">
+                            <i class="bi bi-bank me-1"></i> Capital en Tanques
+                        </span>
+                    </div>
+                    <small class="text-muted">Representa el dinero en stock físico disponible según precio promedio
+                        ponderado.</small>
+                </div>
+            </div>
+        </div>
+    </div>
+    <!-- KPI SECUNDARIOS -->
+
+    <div class="row g-3 mt-2">
+
+        <div class="col-md-4">
+            <div class="card border-0 shadow-sm text-center h-100">
+                <div class="card-body">
+                    <i class="bi bi-moisture text-primary fs-2"></i>
+                    <h3 class="fw-bold mt-2">{{ total_tanques }}</h3>
+                    <small class="text-muted">Tanques</small>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-md-4">
+            <div class="card border-0 shadow-sm text-center h-100">
+                <div class="card-body">
+                    <i class="bi bi-truck text-success fs-2"></i>
+                    <h3 class="fw-bold mt-2">{{ total_vehiculos }}</h3>
+                    <small class="text-muted">Vehículos</small>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-md-4">
+            <div class="card border-0 shadow-sm text-center h-100">
+                <div class="card-body">
+                    <i class="bi bi-list-check text-warning fs-2"></i>
+                    <h3 class="fw-bold mt-2">{{ total_operaciones }}</h3>
+                    <small class="text-muted">Movimientos Kardex</small>
+                </div>
+            </div>
+        </div>
+
+    </div>
+
+
+    <!-- GRAFICOS -->
+
+    <div class="row mt-4 g-4">
+
+        <div class="col-lg-6">
+
+            <div class="card border-0 shadow-sm">
+
+                <div class="card-header bg-white">
+                    <h6 class="fw-bold mb-0">
+                        Compras vs Consumos
+                    </h6>
+                </div>
+
+                <div class="card-body">
+                    <canvas id="chartResumen"></canvas>
+                </div>
+
+            </div>
+
+        </div>
+
+        <div class="col-lg-6">
+
+            <div class="card border-0 shadow-sm">
+
+                <div class="card-header bg-white">
+                    <h6 class="fw-bold mb-0">
+                        Consumo por Vehículo
+                    </h6>
+                </div>
+
+                <div class="card-body">
+                    <canvas id="chartVehiculos"></canvas>
+                </div>
+
+            </div>
 
         </div>
 
     </div>
 
-</div>
+    <!-- TABLA -->
 
-<!-- LIBRERIAS -->
+    <div class="card border-0 shadow-sm mt-4">
 
-<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+        <div class="card-header bg-white d-flex justify-content-between align-items-center">
 
-<script src="https://cdn.datatables.net/1.13.8/js/jquery.dataTables.min.js"></script>
+            <h6 class="fw-bold mb-0">
+                <i class="bi bi-clock-history me-2"></i>
+                Historial de Movimientos
+            </h6>
 
-<script src="https://cdn.datatables.net/1.13.8/js/dataTables.bootstrap5.min.js"></script>
+        </div>
 
-<script src="https://cdn.datatables.net/buttons/2.4.2/js/dataTables.buttons.min.js"></script>
-<script src="https://cdn.datatables.net/buttons/2.4.2/js/buttons.print.min.js"></script>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+        <div class="card-body">
 
-<script src="https://cdn.datatables.net/buttons/2.4.2/js/buttons.html5.min.js"></script>
+            <div class="table-responsive">
+
+                <table id="tablaMovimientos" class="table table-hover align-middle">
+
+                    <thead class="table-light">
+
+                        <tr>
+                            <th>Fecha</th>
+                            <th>Tipo</th>
+                            <th>Tanque</th>
+                            <th>Vehículo</th>
+                            <th>Operador</th>
+                            <th class="text-end">Cantidad</th>
+                            <th>Parte</th>
+                        </tr>
+
+                    </thead>
+
+                    <tbody>
+
+                        {% for m in movimientos %}
+
+                        <tr>
+
+                            <td>
+                                {{ m.fecha.strftime('%d/%m/%Y %H:%M') }}
+                            </td>
+
+                            <td>
+
+                                {% if m.tipo == "ENTRADA" %}
+
+                                <span class="badge bg-success">
+                                    Compra
+                                </span>
+
+                                {% elif m.tipo == "SALIDA" %}
+
+                                <span class="badge bg-danger">
+                                    Consumo
+                                </span>
+
+                                {% else %}
+
+                                <span class="badge bg-info">
+                                    Operación
+                                </span>
+
+                                {% endif %}
+
+                            </td>
+
+                            <td>
+                                {{ m.tanque.nombre if m.tanque else '-' }}
+                            </td>
+
+                            <td>
+                                {{ m.vehiculo.nombre if m.vehiculo else '-' }}
+                            </td>
+
+                            <td>
+                                {{ m.operador.nombre if m.operador else '-' }}
+                            </td>
+
+                            <td class="text-end fw-bold">
+                                {{ "%.2f"|format(m.cantidad or 0) }}
+                            </td>
+
+                            <td>
+                                {{ m.parte_diario or '-' }}
+                            </td>
+
+                        </tr>
+
+                        {% endfor %}
+
+                    </tbody>
+
+                </table>
+
+            </div>
+
+        </div>
+
+    </div>
+
+    <!-- LIBRERIAS -->
+
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+    <script src="https://cdn.datatables.net/1.13.8/js/jquery.dataTables.min.js"></script>
+
+    <script src="https://cdn.datatables.net/1.13.8/js/dataTables.bootstrap5.min.js"></script>
+
+    <script src="https://cdn.datatables.net/buttons/2.4.2/js/dataTables.buttons.min.js"></script>
+    <script src="https://cdn.datatables.net/buttons/2.4.2/js/buttons.print.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+
+    <script src="https://cdn.datatables.net/buttons/2.4.2/js/buttons.html5.min.js"></script>
 
 
 
-<!-- CHART RESUMEN -->
+    <!-- CHART RESUMEN -->
 
-<script>
+    <script>
 
-    new Chart(
-        document.getElementById('chartResumen'),
-        {
-            type: 'bar',
-            data: {
-                labels: ['Compras', 'Consumos'],
-                datasets: [{
-                    label: 'Galones',
-                    data: [
-                        {{ total_compras }},
-                {{ total_consumo }}
+        new Chart(
+            document.getElementById('chartResumen'),
+            {
+                type: 'bar',
+                data: {
+                    labels: ['Compras', 'Consumos'],
+                    datasets: [{
+                        label: 'Galones',
+                        data: [
+                            {{ total_compras }},
+                    {{ total_consumo }}
             ]
-        }]
+            }]
     }
 });
 
-    const vehiculos =
-        {{ por_vehiculo | map(attribute = 0) | list | tojson }};
+        const vehiculos =
+            {{ por_vehiculo | map(attribute = 0) | list | tojson }};
 
-    const consumoVeh =
-        {{ por_vehiculo | map(attribute = 1) | list | tojson }};
+        const consumoVeh =
+            {{ por_vehiculo | map(attribute = 1) | list | tojson }};
 
-    new Chart(
-        document.getElementById('chartVehiculos'),
-        {
-            type: 'bar',
-            data: {
-                labels: vehiculos,
-                datasets: [{
-                    label: 'Galones',
-                    data: consumoVeh
-                }]
-            }
-        });
+        new Chart(
+            document.getElementById('chartVehiculos'),
+            {
+                type: 'bar',
+                data: {
+                    labels: vehiculos,
+                    datasets: [{
+                        label: 'Galones',
+                        data: consumoVeh
+                    }]
+                }
+            });
 
-    const operadores =
-        {{ por_operador | map(attribute = 0) | list | tojson }};
+        const operadores =
+            {{ por_operador | map(attribute = 0) | list | tojson }};
 
-    const consumoOper =
-        {{ por_operador | map(attribute = 1) | list | tojson }};
+        const consumoOper =
+            {{ por_operador | map(attribute = 1) | list | tojson }};
 
-    new Chart(
-        document.getElementById('chartOperadores'),
-        {
-            type: 'bar',
-            data: {
-                labels: operadores,
-                datasets: [{
-                    label: 'Galones',
-                    data: consumoOper
-                }]
-            }
-        });
+        new Chart(
+            document.getElementById('chartOperadores'),
+            {
+                type: 'bar',
+                data: {
+                    labels: operadores,
+                    datasets: [{
+                        label: 'Galones',
+                        data: consumoOper
+                    }]
+                }
+            });
 
-</script>
+    </script>
 
-<!-- DATATABLE -->
+    <!-- DATATABLE -->
 
-<script>
+    <script>
 
-    $(document).ready(function () {
+        $(document).ready(function () {
 
-        $('#tablaMovimientos').DataTable({
+            $('#tablaMovimientos').DataTable({
 
-            pageLength: 10,
+                pageLength: 10,
 
-            responsive: true,
+                responsive: true,
 
-            order: [[0, 'desc']],
+                order: [[0, 'desc']],
 
-            dom: 'Bfrtip',
+                dom: 'Bfrtip',
 
-            buttons: [
-                'excel',
-                'csv',
-                'print'
-            ],
+                buttons: [
+                    'excel',
+                    'csv',
+                    'print'
+                ],
 
-            language: {
+                language: {
 
-                search: "🔍 Buscar:",
+                    search: "🔍 Buscar:",
 
-                lengthMenu:
-                    "Mostrar _MENU_ registros",
+                    lengthMenu:
+                        "Mostrar _MENU_ registros",
 
-                info:
-                    "Mostrando _START_ a _END_ de _TOTAL_ registros",
+                    info:
+                        "Mostrando _START_ a _END_ de _TOTAL_ registros",
 
-                zeroRecords:
-                    "No se encontraron registros",
+                    zeroRecords:
+                        "No se encontraron registros",
 
-                paginate: {
+                    paginate: {
 
-                    previous: "Anterior",
+                        previous: "Anterior",
 
-                    next: "Siguiente"
+                        next: "Siguiente"
+
+                    }
 
                 }
 
-            }
+            });
 
         });
 
-    });
+    </script>
 
-</script>
-
-{% endblock %}
+    {% endblock %}
