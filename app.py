@@ -1973,6 +1973,7 @@ def reporte_rendimiento():
         vehiculos,
         start=1
     ):
+        
 
         ws.cell(
             row=row,
@@ -2054,6 +2055,7 @@ def reporte_rendimiento():
     wb.save(output)
 
     output.seek(0)
+    
 
     return send_file(
         output,
