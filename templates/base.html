@@ -44,6 +44,9 @@
         <a href="{{ url_for('dashboard') }}">
             <i class="bi bi-speedometer2"></i> Dashboard Operativo
         </a>
+        <a href="{{ url_for('rendimiento_list') }}">
+            <i class=" bi bi-speedometer2 me-2"></i> Rendimiento
+        </a>
 
         <hr>
 
@@ -60,8 +63,8 @@
         <hr>
 
         <small class="px-3 text-secondary">Inventario</small>
-        <a href="{{ url_for('proyectos_list') }}"> 
-            <i class="bi bi-kanban me-2"></i>Proyectos 
+        <a href="{{ url_for('proyectos_list') }}">
+            <i class="bi bi-kanban me-2"></i>Proyectos
         </a>
 
         <a href="{{ url_for('vehiculos_list') }}">
@@ -81,10 +84,6 @@
 
         <a href="{{ url_for('kardex_list') }}">
             <i class="bi bi-fuel-pump-fill me-2"></i> Kardex
-        </a>
-
-        <a href="{{ url_for('rendimiento_list') }}">
-            <i class=" bi bi-speedometer2 me-2"></i> Rendimiento
         </a>
 
         <small class="px-3 text-secondary">Reportes</small>
