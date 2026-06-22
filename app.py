@@ -1026,9 +1026,9 @@ def kardex_nuevo():
 
 
         # =========================
-        # VALIDACIÓN SALIDA
+        # VALIDACIÓN SALIDA / OPERACION
         # =========================
-        if tipo == "SALIDA":
+        if tipo in ["SALIDA", "OPERACION"]:
 
             if not tanque:
                 flash("Debe seleccionar un tanque", "danger")
@@ -1043,7 +1043,10 @@ def kardex_nuevo():
                 return redirect(url_for("kardex_list"))
 
             if tanque.stock_actual < cantidad:
-                flash(f"Stock insuficiente ({tanque.stock_actual})", "danger")
+                flash(
+                    f"Stock insuficiente ({tanque.stock_actual:.2f} gls)",
+                    "danger"
+                )
                 return redirect(url_for("kardex_list"))
 
         # =========================
@@ -1194,16 +1197,20 @@ def kardex_nuevo():
                 tanque.precio_promedio = (valor_stock_actual + valor_compra) / nuevo_stock
 
 
-        elif tipo == "SALIDA":
+        elif tipo in ["SALIDA", "OPERACION"]:
+
             if tanque:
-                # 1. Capturamos el precio promedio actual de forma segura (antes de restar)
-                precio_unitario = float(tanque.precio_promedio) if tanque.precio_promedio else 0.0
-                
-                # 2. Calculamos el costo total del despacho
+
+                precio_unitario = float(
+                    tanque.precio_promedio
+                ) if tanque.precio_promedio else 0.0
+
                 costo_total = cantidad * precio_unitario
 
-                # 3. RECIÉN AHORA restamos el combustible del stock físico
-                tanque.stock_actual -= cantidad
+                nuevo.precio_unitario = precio_unitario
+                nuevo.costo_total = costo_total
+
+                tanque.stock_actual -= cantidad        
 
         # =========================
         # 🚀 CONTROL TANQUE LLENO (CORREGIDO)
@@ -1354,19 +1361,18 @@ def kardex_anular(id):
             else:
                 tanque.precio_promedio = 0.00  # Si el tanque se queda vacío, el precio vuelve a cero
 
-        elif mov.tipo == "SALIDA":
-            # En una salida el precio promedio no cambia, solo devolvemos el combustible físico
-            tanque.stock_actual += mov.cantidad
+        elif mov.tipo in ["SALIDA", "OPERACION"]:
 
-
-        elif mov.tipo == "SALIDA":
-
-            tanque.stock_actual += mov.cantidad
+            # devolver combustible al tanque
+            tanque.stock_actual += float(mov.cantidad)
 
         # ===================================
         # ELIMINAR RENDIMIENTOS GENERADOS
         # ===================================
-        if hasattr(Rendimiento, "kardex_id"):
+        if (
+            mov.tipo == "SALIDA"
+            and hasattr(Rendimiento, "kardex_id")
+        ):
 
             Rendimiento.query.filter(
                 Rendimiento.kardex_id == mov.id
@@ -1397,7 +1403,10 @@ def kardex_anular(id):
         # ===================================
         # RECALCULAR RENDIMIENTOS
         # ===================================
-        if mov.vehiculo_id:
+        if (
+            mov.tipo == "SALIDA"
+            and mov.vehiculo_id
+        ):
 
             recalcular_rendimientos_vehiculo(
                 mov.vehiculo_id
