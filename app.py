@@ -941,8 +941,9 @@ def tanques_eliminar(id):
 @login_required
 @permission_required("kardex", "ver")
 def kardex_list():
-    query = Kardex.query
-
+    query = Kardex.query.filter(
+    Kardex.activo == True
+    )
     fecha_inicio = request.args.get("fecha_inicio")
     fecha_fin = request.args.get("fecha_fin")
     proyecto_id = request.args.get("proyecto_id")
@@ -967,12 +968,12 @@ def kardex_list():
 
     if proyecto_id:
         query = query.filter(
-            Kardex.proyecto_id == proyecto_id
+            Kardex.proyecto_id == int(proyecto_id)
         )
 
     if vehiculo_id:
         query = query.filter(
-            Kardex.vehiculo_id == vehiculo_id
+            Kardex.vehiculo_id == int(vehiculo_id)
         )
 
     if tipo:
@@ -988,9 +989,18 @@ def kardex_list():
                 Kardex.observacion.ilike(f"%{buscar}%")
             )
         )
-    lista = query.order_by(
-        Kardex.fecha.desc(),
+
+    proyectos = Proyecto.query.filter_by(
+    activo=True
+    ).all()
+
+    # Filtros del dashboard
+    filtro = [
         Kardex.activo == True
+    ]
+
+    lista = query.order_by(
+        Kardex.fecha.desc()
     ).all()
 
     fecha_actual = now_lima().strftime("%Y-%m-%dT%H:%M")
@@ -998,7 +1008,7 @@ def kardex_list():
         "kardex.html",
         lista=lista,#Kardex.query.filter(Kardex.activo == True).order_by(Kardex.fecha.desc()).all(),
         proyectos=Proyecto.query.filter_by(activo=True).all(),
-        vehiculos=Vehiculo.query.all(),
+        vehiculos=Vehiculo.query.filter_by(activo=True).order_by(Vehiculo.nombre.asc()).all(),
         tanques=Tanque.query.all(),
         operadores=Operador.query.all(),
         fecha_actual=fecha_actual
