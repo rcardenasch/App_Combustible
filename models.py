@@ -131,7 +131,7 @@ class Vehiculo(db.Model):
     proyecto_id = db.Column(db.Integer, db.ForeignKey("proyectos.id"))
 
     kardex = db.relationship("Kardex", backref="vehiculo", lazy=True)
-    rendimientos = db.relationship("Rendimiento", backref="vehiculo", lazy=True)
+    rendimientos = db.relationship("Rendimiento", lazy=True)
 
 # =========================
 # OPERADORES
@@ -249,6 +249,7 @@ class Rendimiento(db.Model):
     recorrido_total = db.Column(db.Float)
 
     rendimiento_calculado = db.Column(db.Float)
+    rendimiento_referencia = db.Column(db.Float)
 
     estado = db.Column(db.String(20))  # NORMAL, ALTO, BAJO
 
@@ -258,6 +259,10 @@ class Rendimiento(db.Model):
     
     proyecto = db.relationship(
         "Proyecto"
+    )
+    # NUEVO
+    vehiculo = db.relationship(
+        "Vehiculo"
     )
 
 

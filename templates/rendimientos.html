@@ -157,8 +157,9 @@
                         <th class="ps-4">Fecha</th>
                         <th>Vehículo / Equipo</th>
                         <th class="text-center">Consumo (Gls)</th>
-                        <th class="text-center">Recorrido (H/Km)</th>
-                        <th class="text-end">Rendimiento (gal/hr)</th>
+                        <th class="text-center">Recorrido (Hr/Km)</th>
+                        <th class="text-center">Meta (Gls/Hr)</th>
+                        <th class="text-end">Rendimiento (Gls/Hr)</th>
                         <th class="text-center pe-4">Estado</th>
                     </tr>
                 </thead>
@@ -169,6 +170,7 @@
                         <td class="fw-bold text-dark">{{ r.vehiculo.nombre }}</td>
                         <td class="text-center fw-semibold text-secondary">{{ r.consumo_total }}</td>
                         <td class="text-center fw-semibold text-secondary">{{ r.recorrido_total }}</td>
+                        <td class="text-center fw-semibold text-secondary">{{ r.rendimiento_referencia }}</td>
                         <td class="text-end fw-bold fs-6">
                             {{ "%.2f"|format(r.rendimiento_calculado) }}
                         </td>

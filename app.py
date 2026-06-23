@@ -1270,20 +1270,25 @@ def kardex_nuevo():
                                 vehiculo_id=vehiculo_id
                             )
                             db.session.add(alerta)
-                    
-                    
+            
                     nuevo_rend = Rendimiento(
                         vehiculo_id=vehiculo_id,
+                        proyecto_id=nuevo.proyecto_id,
                         consumo_total=consumo_total,
                         recorrido_total=recorrido_total,
                         rendimiento_calculado=rendimiento,
+                        rendimiento_referencia=(
+                            float(vehiculo.rendimiento_promedio)
+                            if vehiculo and vehiculo.rendimiento_promedio
+                            else None
+                        ),
                         estado=estado,
                         tipo_control="TANQUE_LLENO",
                         observacion="Control tanque lleno",
                         horometro_abastecimiento_inicial=h_ini,
-                        horometro_abastecimiento_final=h_fin,
-                        proyecto_id=nuevo.proyecto_id
+                        horometro_abastecimiento_final=h_fin
                     )
+
                     db.session.add(nuevo_rend)
 
         # Confirmación final de la transacción en la BD
@@ -1479,6 +1484,7 @@ def recalcular_rendimientos_vehiculo(vehiculo_id):
             Kardex.activo == True,
             Kardex.cantidad > 0,
             Kardex.id > anterior.id,  # 🔥 Cambiado a ID para evitar desajustes por milisegundos
+            Kardex.fecha > anterior.fecha,
             Kardex.fecha <= actual.fecha
         ).scalar()
 
@@ -1505,15 +1511,20 @@ def recalcular_rendimientos_vehiculo(vehiculo_id):
         # Crear el nuevo historial recalculado
         nuevo_rend = Rendimiento(
             vehiculo_id=vehiculo_id,
+            proyecto_id=actual.proyecto_id,
             consumo_total=consumo_total,
             recorrido_total=recorrido_total,
             rendimiento_calculado=rendimiento,
+            rendimiento_referencia=(
+                float(vehiculo.rendimiento_promedio)
+                if vehiculo and vehiculo.rendimiento_promedio
+                else None
+            ),
             estado=estado,
             tipo_control="TANQUE_LLENO",
             observacion="Recalculado automáticamente",
             horometro_abastecimiento_inicial=h_ini,
-            horometro_abastecimiento_final=h_fin,
-            proyecto_id=actual.proyecto_id
+            horometro_abastecimiento_final=h_fin
         )
         db.session.add(nuevo_rend)
 
@@ -1679,62 +1690,6 @@ def rendimiento_list():
         por_vehiculo=por_vehiculo,
         por_proyecto=por_proyecto
     )
-
-
-@app.route("/rendimientos/calcular/<int:vehiculo_id>", methods=["POST"])
-@login_required
-@permission_required("rendimientos", "crear")
-def calcular_rendimiento(vehiculo_id):
-
-    try:
-        registros = Kardex.query.filter_by(
-            vehiculo_id=vehiculo_id,
-            activo = True,
-            tipo="SALIDA"
-        ).order_by(Kardex.fecha.desc()).limit(2).all()
-
-        if len(registros) < 2:
-            flash("No hay suficientes datos", "warning")
-            return redirect(url_for("rendimiento_list"))
-
-        actual, anterior = registros
-
-        recorrido = (actual.horometro_final or 0) - (anterior.horometro_final or 0)
-        consumo = actual.cantidad
-
-        if consumo == 0:
-            flash("Consumo inválido", "danger")
-            return redirect(url_for("rendimiento_list"))
-
-        rendimiento = recorrido / consumo
-
-        vehiculo = Vehiculo.query.get(vehiculo_id)
-
-        if rendimiento < vehiculo.rendimiento_promedio * 0.8:
-            estado = "BAJO"
-        elif rendimiento > vehiculo.rendimiento_promedio * 1.2:
-            estado = "ALTO"
-        else:
-            estado = "NORMAL"
-
-        nuevo = Rendimiento(
-            vehiculo_id=vehiculo_id,
-            consumo=consumo,
-            recorrido=recorrido,
-            rendimiento_calculado=rendimiento,
-            estado=estado
-        )
-
-        db.session.add(nuevo)
-        db.session.commit()
-
-        flash(f"✅ Rendimiento calculado ({estado})", "success")
-
-    except Exception as e:
-        db.session.rollback()
-        flash(f"Error: {str(e)}", "danger")
-
-    return redirect(url_for("rendimiento_list"))
 
 
 @app.route("/cargas", methods=["POST"])
