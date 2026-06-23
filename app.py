@@ -941,17 +941,69 @@ def tanques_eliminar(id):
 @login_required
 @permission_required("kardex", "ver")
 def kardex_list():
+    query = Kardex.query
+
+    fecha_inicio = request.args.get("fecha_inicio")
+    fecha_fin = request.args.get("fecha_fin")
+    proyecto_id = request.args.get("proyecto_id")
+    vehiculo_id = request.args.get("vehiculo_id")
+    tipo = request.args.get("tipo")
+    buscar = request.args.get("buscar")
+
+    if fecha_inicio:
+        query = query.filter(
+            Kardex.fecha >= fecha_inicio
+        )
+
+    if fecha_fin:
+        query = query.filter(
+            Kardex.fecha < (
+                datetime.strptime(
+                    fecha_fin,
+                    "%Y-%m-%d"
+                ) + timedelta(days=1)
+            )
+        )
+
+    if proyecto_id:
+        query = query.filter(
+            Kardex.proyecto_id == proyecto_id
+        )
+
+    if vehiculo_id:
+        query = query.filter(
+            Kardex.vehiculo_id == vehiculo_id
+        )
+
+    if tipo:
+        query = query.filter(
+            Kardex.tipo == tipo
+        )
+
+    if buscar:
+        query = query.filter(
+            db.or_(
+                Kardex.parte_diario.ilike(f"%{buscar}%"),
+                Kardex.factura.ilike(f"%{buscar}%"),
+                Kardex.observacion.ilike(f"%{buscar}%")
+            )
+        )
+    lista = query.order_by(
+        Kardex.fecha.desc(),
+        Kardex.activo == True
+    ).all()
 
     fecha_actual = now_lima().strftime("%Y-%m-%dT%H:%M")
     return render_template(
         "kardex.html",
-        lista=Kardex.query.filter(Kardex.activo == True).order_by(Kardex.fecha.desc()).all(),
-        proyectos=Proyecto.query.all(),
+        lista=lista,#Kardex.query.filter(Kardex.activo == True).order_by(Kardex.fecha.desc()).all(),
+        proyectos=Proyecto.query.filter_by(activo=True).all(),
         vehiculos=Vehiculo.query.all(),
         tanques=Tanque.query.all(),
         operadores=Operador.query.all(),
         fecha_actual=fecha_actual
     )
+
 
 @app.route("/kardex/nuevo", methods=["POST"])
 @login_required
