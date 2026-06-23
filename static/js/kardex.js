@@ -69,6 +69,7 @@ $('#modalNuevo').on('hidden.bs.modal', function () {
             $(".datatable").DataTable({
                 pageLength: 5,
                 responsive: true,
+                order: [],   // respeta el orden recibido desde Flask
                 language: {
                     search: "Buscar:",
                     lengthMenu: "Mostrar _MENU_ registros",
