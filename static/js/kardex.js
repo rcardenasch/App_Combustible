@@ -44,6 +44,9 @@ document.addEventListener("DOMContentLoaded", function () {
 $('#modalNuevo').on('hidden.bs.modal', function () {
     $("#formKardex")[0].reset();
 
+    $("#divPrecio").removeClass("d-none");
+    $("#precio_unitario").val("");
+
     // Restablece el input de horómetro inicial a su estado por defecto
     $("#horometro_inicial")
         .val("0.00")
@@ -143,31 +146,55 @@ $("#tipo").on("change", function () {
 });
 
 function toggleCamposPorTipo() {
+
     const tipo = $("#tipo").val();
+
     const vehiculo = $("#vehiculo");
     const horoFinal = $("#horometro_final");
     const tanqueLleno = $("#tanque_lleno");
-    const horoInicial = $("#horometro_inicial"); // Nueva constante
+    const horoInicial = $("#horometro_inicial");
+
+    const divPrecio = $("#divPrecio");
+    const precio = $("#precio_unitario");
 
     if (tipo === "ENTRADA") {
+
         vehiculo.prop("disabled", true).val("");
         horoFinal.prop("disabled", true).val("");
         tanqueLleno.prop("checked", false).prop("disabled", true);
-        
-        // Bloquea por completo el campo inicial en las entradas
-        horoInicial.val("0.00").prop("disabled", true).addClass("bg-secondary-subtle");
 
-    } else if (tipo === "SALIDA") {
+        horoInicial
+            .val("0.00")
+            .prop("disabled", true)
+            .addClass("bg-secondary-subtle");
+
+        // Mostrar precio solo para entradas
+        divPrecio.removeClass("d-none");
+        precio.prop("required", true);
+
+    }
+    else if (tipo === "SALIDA") {
+
         vehiculo.prop("disabled", false);
         horoFinal.prop("disabled", false);
         tanqueLleno.prop("disabled", false);
-        horoInicial.prop("disabled", false); // Habilita el envío del input
+        horoInicial.prop("disabled", false);
 
-    } else {
+        // Ocultar precio
+        divPrecio.addClass("d-none");
+        precio.prop("required", false).val("");
+
+    }
+    else { // OPERACION
+
         vehiculo.prop("disabled", false);
         horoFinal.prop("disabled", false);
         tanqueLleno.prop("checked", false).prop("disabled", true);
         horoInicial.prop("disabled", false);
+
+        // Ocultar precio
+        divPrecio.addClass("d-none");
+        precio.prop("required", false).val("");
     }
 }
 let kardexIdEliminar = null;
@@ -196,3 +223,9 @@ function ejecutarAnulacion() {
 
     form.submit();
 }
+
+$(document).ready(function () {
+
+    toggleCamposPorTipo();
+
+});
