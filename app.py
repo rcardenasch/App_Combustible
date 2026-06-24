@@ -888,10 +888,6 @@ def tanques_editar(id):
             request.form.get("capacidad") or 0
         )
 
-        tanque.stock_actual = float(
-            request.form.get("stock_actual") or 0
-        )
-
         tanque.stock_minimo = float(
             request.form.get("stock_minimo") or 0
         )
