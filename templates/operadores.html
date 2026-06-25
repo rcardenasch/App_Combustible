@@ -22,9 +22,7 @@
     </div>
 
     {% if puede_crear %}
-    <button class="btn btn-primary btn-lg shadow-sm"
-            data-bs-toggle="modal"
-            data-bs-target="#modalNuevoOperador">
+    <button class="btn btn-primary btn-lg shadow-sm" data-bs-toggle="modal" data-bs-target="#modalNuevoOperador">
 
         <i class="bi bi-plus-lg me-2"></i>
         Nuevo Operador
@@ -65,7 +63,7 @@
                             <div class="d-flex align-items-center">
 
                                 <div class="avatar-sm me-3 bg-primary-subtle text-primary rounded-circle d-flex align-items-center justify-content-center"
-                                     style="width:40px;height:40px;">
+                                    style="width:40px;height:40px;">
 
                                     {{ o.nombre[:1].upper() }}
 
@@ -94,7 +92,7 @@
                             {% if o.proyecto %}
                             <span class="badge bg-info-subtle text-info border border-info-subtle">
                                 <i class="bi bi-building me-1"></i>
-                                {{ o.proyecto.nombre }}
+                                {{ o.proyecto.nombre_corto }}
                             </span>
                             {% else %}
                             <span class="text-muted">
@@ -104,7 +102,8 @@
                         </td>
 
                         <td class="text-center">
-                            <span class="badge rounded-pill bg-success-subtle text-success border border-success-subtle px-3">
+                            <span
+                                class="badge rounded-pill bg-success-subtle text-success border border-success-subtle px-3">
                                 Activo
                             </span>
                         </td>
@@ -114,21 +113,18 @@
                             <div class="btn-group shadow-sm">
 
                                 {% if puede_editar %}
-                                <button class="btn btn-outline-warning btn-sm"
-                                        data-bs-toggle="modal"
-                                        data-bs-target="#modalEditar{{ o.id }}">
+                                <button class="btn btn-outline-warning btn-sm" data-bs-toggle="modal"
+                                    data-bs-target="#modalEditar{{ o.id }}">
 
                                     <i class="bi bi-pencil"></i>
                                 </button>
                                 {% endif %}
 
                                 {% if puede_eliminar %}
-                                <form method="POST"
-                                      action="{{ url_for('operadores_eliminar', id=o.id) }}">
+                                <form method="POST" action="{{ url_for('operadores_eliminar', id=o.id) }}">
 
-                                    <button type="button"
-                                            class="btn btn-outline-danger btn-sm"
-                                            onclick="confirmarEliminacion(this.closest('form'))">
+                                    <button type="button" class="btn btn-outline-danger btn-sm"
+                                        onclick="confirmarEliminacion(this.closest('form'))">
 
                                         <i class="bi bi-trash"></i>
                                     </button>
@@ -161,8 +157,7 @@
 
         <div class="modal-content border-0 shadow-lg">
 
-            <form method="POST"
-                  action="{{ url_for('operadores_nuevo') }}">
+            <form method="POST" action="{{ url_for('operadores_nuevo') }}">
 
                 <div class="modal-header bg-light">
 
@@ -171,8 +166,7 @@
                         Nuevo Operador
                     </h5>
 
-                    <button class="btn-close"
-                            data-bs-dismiss="modal"></button>
+                    <button class="btn-close" data-bs-dismiss="modal"></button>
 
                 </div>
 
@@ -185,10 +179,7 @@
                                 Nombre
                             </label>
 
-                            <input type="text"
-                                   name="nombre"
-                                   class="form-control"
-                                   required>
+                            <input type="text" name="nombre" class="form-control" required>
                         </div>
 
                         <div class="col-md-3">
@@ -196,9 +187,7 @@
                                 DNI
                             </label>
 
-                            <input type="text"
-                                   name="documento"
-                                   class="form-control">
+                            <input type="text" name="documento" class="form-control">
                         </div>
 
                         <div class="col-md-3">
@@ -206,8 +195,7 @@
                                 Proyecto
                             </label>
 
-                            <select name="proyecto_id"
-                                    class="form-select">
+                            <select name="proyecto_id" class="form-select">
 
                                 <option value="">Seleccionar...</option>
 
@@ -225,9 +213,7 @@
 
                 <div class="modal-footer bg-light border-0">
 
-                    <button type="button"
-                            class="btn btn-outline-secondary"
-                            data-bs-dismiss="modal">
+                    <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">
 
                         Cancelar
                     </button>
@@ -253,17 +239,13 @@ MODALES EDITAR
 ========================= -->
 {% for o in lista %}
 
-<div class="modal fade"
-     id="modalEditar{{ o.id }}"
-     tabindex="-1"
-     aria-hidden="true">
+<div class="modal fade" id="modalEditar{{ o.id }}" tabindex="-1" aria-hidden="true">
 
     <div class="modal-dialog modal-lg modal-dialog-centered">
 
         <div class="modal-content border-0 shadow-lg">
 
-            <form method="POST"
-                  action="{{ url_for('operadores_editar', id=o.id) }}">
+            <form method="POST" action="{{ url_for('operadores_editar', id=o.id) }}">
 
                 <div class="modal-header bg-light">
 
@@ -272,9 +254,7 @@ MODALES EDITAR
                         Editar Operador
                     </h5>
 
-                    <button type="button"
-                            class="btn-close"
-                            data-bs-dismiss="modal">
+                    <button type="button" class="btn-close" data-bs-dismiss="modal">
                     </button>
 
                 </div>
@@ -288,11 +268,7 @@ MODALES EDITAR
                                 Nombre
                             </label>
 
-                            <input type="text"
-                                   name="nombre"
-                                   class="form-control"
-                                   value="{{ o.nombre }}"
-                                   required>
+                            <input type="text" name="nombre" class="form-control" value="{{ o.nombre }}" required>
                         </div>
 
                         <div class="col-md-3">
@@ -300,10 +276,7 @@ MODALES EDITAR
                                 DNI
                             </label>
 
-                            <input type="text"
-                                   name="documento"
-                                   class="form-control"
-                                   value="{{ o.documento }}">
+                            <input type="text" name="documento" class="form-control" value="{{ o.documento }}">
                         </div>
 
                         <div class="col-md-3">
@@ -311,14 +284,12 @@ MODALES EDITAR
                                 Proyecto
                             </label>
 
-                            <select name="proyecto_id"
-                                    class="form-select">
+                            <select name="proyecto_id" class="form-select">
 
                                 <option value="">Seleccionar...</option>
 
                                 {% for p in proyectos %}
-                                <option value="{{ p.id }}"
-                                    {% if o.proyecto_id == p.id %}selected{% endif %}>
+                                <option value="{{ p.id }}" {% if o.proyecto_id==p.id %}selected{% endif %}>
 
                                     {{ p.nombre }}
 
@@ -334,15 +305,12 @@ MODALES EDITAR
 
                 <div class="modal-footer bg-light border-0">
 
-                    <button type="button"
-                            class="btn btn-outline-secondary"
-                            data-bs-dismiss="modal">
+                    <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">
 
                         Cancelar
                     </button>
 
-                    <button type="submit"
-                            class="btn btn-warning px-4 fw-bold">
+                    <button type="submit" class="btn btn-warning px-4 fw-bold">
 
                         <i class="bi bi-check2-circle me-1"></i>
                         Guardar Cambios

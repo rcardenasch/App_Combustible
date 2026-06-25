@@ -17,7 +17,8 @@
     </div>
 
     {% if puede_crear %}
-    <button class="btn btn-primary btn-lg shadow-sm d-flex align-items-center" data-bs-toggle="modal" data-bs-target="#modalNuevoVehiculo">
+    <button class="btn btn-primary btn-lg shadow-sm d-flex align-items-center" data-bs-toggle="modal"
+        data-bs-target="#modalNuevoVehiculo">
         <i class="bi bi-plus-lg me-2"></i> Nuevo Vehículo
     </button>
     {% endif %}
@@ -46,7 +47,8 @@
                         <td class="ps-4 text-muted">#{{ v.id }}</td>
                         <td>
                             <div class="fw-bold text-dark">{{ v.nombre }}</div>
-                            <span class="text-muted x-small" style="font-size: 0.75rem;">Actualizado recientemente</span>
+                            <span class="text-muted x-small" style="font-size: 0.75rem;">Actualizado
+                                recientemente</span>
                         </td>
                         <td>
                             <span class="badge bg-light text-dark border fw-medium px-2 py-1">
@@ -64,26 +66,28 @@
                         </td>
                         <td>
                             <div class="d-flex align-items-center">
-                                <i class="bi bi-folder2-open me-2 text-warning"></i>
-                                <span class="text-truncate" style="max-width: 150px;">{{ v.proyecto_id }}</span>
+                                
+                                <span class="badge bg-info-subtle text-info border border-info-subtle">
+                                    <i class="bi bi-building me-1"></i>
+                                    {{ v.proyecto.nombre_corto if v.proyecto and v.proyecto.nombre_corto else 'Sin
+                                    Proyecto' }}
+                                </span>
                             </div>
                         </td>
                         <td class="text-center pe-4">
                             <div class="btn-group shadow-sm">
                                 {% if puede_editar %}
-                                <button class="btn btn-outline-warning btn-sm" 
-                                        data-bs-toggle="modal" 
-                                        data-bs-target="#modalEditar{{ v.id }}"
-                                        title="Editar detalles">
+                                <button class="btn btn-outline-warning btn-sm" data-bs-toggle="modal"
+                                    data-bs-target="#modalEditar{{ v.id }}" title="Editar detalles">
                                     <i class="bi bi-pencil"></i>
                                 </button>
                                 {% endif %}
 
                                 {% if puede_eliminar %}
-                                <form method="POST" action="{{ url_for('vehiculos_eliminar', id=v.id) }}" class="d-inline">
-                                    <button type="button" class="btn btn-outline-danger btn-sm" 
-                                            onclick="confirmarEliminacion(this.closest('form'))"
-                                            title="Eliminar registro">
+                                <form method="POST" action="{{ url_for('vehiculos_eliminar', id=v.id) }}"
+                                    class="d-inline">
+                                    <button type="button" class="btn btn-outline-danger btn-sm"
+                                        onclick="confirmarEliminacion(this.closest('form'))" title="Eliminar registro">
                                         <i class="bi bi-trash"></i>
                                     </button>
                                 </form>
@@ -101,7 +105,8 @@
 
 <!-- ================= EDITAR ================= -->
 {% for v in lista %}
-<div class="modal fade" id="modalEditar{{ v.id }}" tabindex="-1" aria-labelledby="modalEditarLabel{{ v.id }}" aria-hidden="true">
+<div class="modal fade" id="modalEditar{{ v.id }}" tabindex="-1" aria-labelledby="modalEditarLabel{{ v.id }}"
+    aria-hidden="true">
     <div class="modal-dialog modal-lg modal-dialog-centered">
         <div class="modal-content shadow-lg border-0">
 
@@ -109,7 +114,8 @@
 
                 <div class="modal-header bg-light">
                     <h5 class="modal-title d-flex align-items-center" id="modalEditarLabel{{ v.id }}">
-                        <i class="bi bi-pencil-square me-2 text-warning"></i> Editar Vehículo: <span class="ms-2 badge bg-dark-subtle text-dark">{{ v.placa }}</span>
+                        <i class="bi bi-pencil-square me-2 text-warning"></i> Editar Vehículo: <span
+                            class="ms-2 badge bg-dark-subtle text-dark">{{ v.placa }}</span>
                     </h5>
                     <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
                 </div>
@@ -118,10 +124,11 @@
                     <div class="row g-3">
                         <!-- Proyecto -->
                         <div class="col-md-12 mb-2">
-                            <label class="form-label fw-bold text-secondary small text-uppercase">Proyecto Asignado</label>
+                            <label class="form-label fw-bold text-secondary small text-uppercase">Proyecto
+                                Asignado</label>
                             <select name="proyecto_id" class="form-select border-warning-subtle shadow-sm">
                                 {% for p in proyectos %}
-                                <option value="{{ p.id }}" {% if p.id == v.proyecto_id %}selected{% endif %}>
+                                <option value="{{ p.id }}" {% if p.id==v.proyecto_id %}selected{% endif %}>
                                     {{ p.nombre }}
                                 </option>
                                 {% endfor %}
@@ -149,7 +156,8 @@
                         <div class="col-md-6">
                             <label class="form-label fw-semibold">Rendimiento Promedio</label>
                             <div class="input-group">
-                                <input type="number" step="0.01" name="rendimiento_promedio" class="form-control" value="{{ v.rendimiento_promedio }}">
+                                <input type="number" step="0.01" name="rendimiento_promedio" class="form-control"
+                                    value="{{ v.rendimiento_promedio }}">
                                 <span class="input-group-text bg-light text-muted small">gal/hr</span>
                             </div>
                         </div>
@@ -157,7 +165,8 @@
                 </div>
 
                 <div class="modal-footer bg-light border-top-0 px-4 pb-4">
-                    <button type="button" class="btn btn-outline-secondary px-4" data-bs-dismiss="modal">Cancelar</button>
+                    <button type="button" class="btn btn-outline-secondary px-4"
+                        data-bs-dismiss="modal">Cancelar</button>
                     <button type="submit" class="btn btn-warning px-5 fw-bold shadow-sm">
                         <i class="bi bi-check2-circle me-1"></i> Actualizar Cambios
                     </button>
@@ -171,12 +180,13 @@
 {% endfor %}
 
 {% if puede_crear %}
-<div class="modal fade" id="modalNuevoVehiculo" tabindex="-1" aria-labelledby="modalNuevoVehiculoLabel" aria-hidden="true">
+<div class="modal fade" id="modalNuevoVehiculo" tabindex="-1" aria-labelledby="modalNuevoVehiculoLabel"
+    aria-hidden="true">
     <div class="modal-dialog modal-lg modal-dialog-centered">
         <div class="modal-content shadow-lg border-0">
-            
+
             <form method="POST" action="{{ url_for('vehiculos_nuevo') }}">
-                
+
                 <div class="modal-header bg-light">
                     <h5 class="modal-title d-flex align-items-center" id="modalNuevoVehiculoLabel">
                         <i class="bi bi-truck me-2 text-primary"></i> Registrar Nuevo Vehículo
@@ -202,9 +212,10 @@
                     <div class="row g-3">
                         <div class="col-md-8">
                             <label class="form-label fw-semibold">Nombre del Equipo / Modelo</label>
-                            <input type="text" name="nombre" class="form-control" placeholder="Ej: Excavadora Caterpillar 320" required>
+                            <input type="text" name="nombre" class="form-control"
+                                placeholder="Ej: Excavadora Caterpillar 320" required>
                         </div>
-                        
+
                         <div class="col-md-4">
                             <label class="form-label fw-semibold">Placa / ID Interno</label>
                             <input type="text" name="placa" class="form-control" placeholder="ABC-123">
@@ -212,13 +223,15 @@
 
                         <div class="col-md-6">
                             <label class="form-label fw-semibold">Tipo de Vehículo</label>
-                            <input type="text" name="tipo" class="form-control" placeholder="Ej: Carga Pesada, Camioneta">
+                            <input type="text" name="tipo" class="form-control"
+                                placeholder="Ej: Carga Pesada, Camioneta">
                         </div>
 
                         <div class="col-md-6">
                             <label class="form-label fw-semibold">Rendimiento Estimado</label>
                             <div class="input-group">
-                                <input type="number" step="0.01" name="rendimiento_promedio" class="form-control" placeholder="0.00">
+                                <input type="number" step="0.01" name="rendimiento_promedio" class="form-control"
+                                    placeholder="0.00">
                                 <span class="input-group-text bg-light text-muted">gal/hr</span>
                             </div>
                             <div class="form-text small">Promedio de consumo sugerido.</div>
@@ -227,7 +240,8 @@
                 </div>
 
                 <div class="modal-footer bg-light border-top-0 px-4 pb-4">
-                    <button type="button" class="btn btn-outline-secondary px-4" data-bs-dismiss="modal">Cancelar</button>
+                    <button type="button" class="btn btn-outline-secondary px-4"
+                        data-bs-dismiss="modal">Cancelar</button>
                     <button type="submit" class="btn btn-primary px-5 fw-bold shadow-sm">
                         <i class="bi bi-save me-1"></i> Guardar Vehículo
                     </button>
