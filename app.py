@@ -66,7 +66,8 @@ MODULOS = [
     "operadores",
     "tanques",
     "rendimientos",
-    "kardex"
+    "kardex",
+    "reportes"
 ]
 
 ACCIONES = ["ver", "crear", "editar", "eliminar"]
@@ -155,7 +156,7 @@ with app.app_context():
         print("🚀 Iniciando aplicación...")
 
         # SOLO crear tablas
-        db.create_all()
+        # db.create_all() # Una sola vez luego comentarlo cuado se migre a NEON porque ❌ ESTO BLOQUEA TODO EL ARRANQUE
 
         print("✅ Tablas verificadas")
 
@@ -252,6 +253,8 @@ def logout():
 # =========================
 # CRUD USUARIOS
 # =========================
+from sqlalchemy.orm import joinedload
+
 @app.route("/usuarios")
 @login_required
 @permission_required("usuarios","ver")
@@ -260,9 +263,11 @@ def usuarios_list():
     #return "SI FUNCIONA USUARIOS"
     return render_template(
         "usuarios.html",
-        lista=Usuario.query.all(),
+        #lista=Usuario.query.all(),
+        lista = db.session.query(Usuario).options(joinedload(Usuario.roles)).all(), # aoptimiza consulta vs Usuario.query.all()
         roles=Role.query.all()
     )
+
 @app.route("/usuarios/nuevo", methods=["POST"])
 @login_required
 @permission_required("usuarios","crear")
@@ -1642,6 +1647,7 @@ def registrar_carga():
 
 @app.route("/reportes/consumos")
 @login_required
+@permission_required("reportes","ver")
 def vista_reporte_consumos():
 
     return render_template(
@@ -1653,6 +1659,7 @@ def vista_reporte_consumos():
 # ===================================================================================
 @app.route("/reportes/consumo/excel")
 @login_required
+@permission_required("reportes","ver")
 def reporte_consumos():
 
     tipo = request.args.get("tipo")
