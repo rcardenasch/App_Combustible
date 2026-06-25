@@ -48,6 +48,7 @@
                         <th>Precio.Prom</th>
                         <th>Nivel</th>
                         <th>Estado</th>
+                        <th>Proyecto</th>
                         <th class="text-center pe-4">Acciones</th>
                     </tr>
 
@@ -122,7 +123,16 @@
                                 {% endif %}
 
                         </td>
+                        <td>
+                            <div class="d-flex align-items-center">
 
+                                <span class="badge bg-info-subtle text-info border border-info-subtle">
+                                    <i class="bi bi-building me-1"></i>
+                                    {{ t.proyecto.nombre_corto if t.proyecto and t.proyecto.nombre_corto else 'Sin
+                                    Proyecto' }}
+                                </span>
+                            </div>
+                        </td>
                         <td class="text-center pe-4">
 
                             <div class="btn-group shadow-sm">
@@ -307,7 +317,8 @@ MODAL NUEVO
 
                         <div class="col-md-12 mb-2">
 
-                            <label class="form-label fw-bold text-secondary small text-uppercase">Asignación de Proyecto</label>
+                            <label class="form-label fw-bold text-secondary small text-uppercase">Asignación de
+                                Proyecto</label>
 
                             <select name="proyecto_id" class="form-select border-warning-subtle shadow-sm" required>
 
