@@ -220,8 +220,7 @@ def permission_required(modulo, accion):
 @login_required
 def index():
     return redirect(url_for("dashboard_gerencial"))
-    #return redirect(url_for("rendimiento_list"))
-    
+
     
 
 @app.route('/login', methods=['GET','POST'])
@@ -481,7 +480,6 @@ def roles_nuevo():
 
     return redirect(url_for("roles_list"))
 
-
 @app.route("/roles/editar/<int:id>", methods=["POST"])
 @login_required
 @permission_required("roles", "editar")
@@ -506,7 +504,6 @@ def roles_editar(id):
         flash(f"Error: {str(e)}", "danger")
 
     return redirect(url_for("roles_list"))
-
 
 @app.route("/roles/eliminar/<int:id>", methods=["POST"])
 @login_required
@@ -538,7 +535,6 @@ def vehiculos_list():
         lista=Vehiculo.query.all(),
         proyectos=Proyecto.query.all()
     )
-
 
 @app.route("/vehiculos/nuevo", methods=["POST"])
 @login_required
@@ -627,7 +623,6 @@ def vehiculos_editar(id):
 
     return redirect(url_for("vehiculos_list"))
 
-
 @app.route("/vehiculo/eliminar/<int:id>", methods=["POST"])
 @login_required
 @permission_required("vehiculos", "eliminar")
@@ -650,7 +645,6 @@ def vehiculos_eliminar(id):
 # =========================
 # PROYECTOS
 # =========================
-
 @app.route("/proyectos")
 @login_required
 @permission_required("proyectos","ver")
@@ -1009,7 +1003,6 @@ def kardex_list():
         operadores=Operador.query.all(),
         fecha_actual=fecha_actual
     )
-
 
 @app.route("/kardex/nuevo", methods=["POST"])
 @login_required
@@ -1605,151 +1598,6 @@ def ultimo_horometro(vehiculo_id):
         "horometro_final": ultimo.horometro_final if ultimo else 0
     }
 
-# =========================
-# RENDIMIENTOS DASH
-# =========================
-@app.route("/rendimientos")
-@login_required
-@permission_required("rendimientos", "ver")
-def rendimiento_list():
-
-    from sqlalchemy import func
-
-    proyecto_id = request.args.get(
-    "proyecto_id",
-    type=int
-    )
-    proyectos = Proyecto.query.filter_by(
-    activo=True
-    ).all()
-
-    # =========================
-    # FILTRO BASE
-    # =========================
-    filtro = []
-
-    if proyecto_id:
-        filtro.append(
-        Rendimiento.proyecto_id == proyecto_id
-    )
-
-    # =========================
-    # KPIs GENERALES
-    # =========================
-    total = db.session.query(
-        func.count(Rendimiento.id)
-    ).filter(
-        *filtro
-    ).scalar() or 0
-
-    promedio = db.session.query(
-        func.avg(Rendimiento.rendimiento_calculado)
-    ).filter(
-        *filtro
-    ).scalar() or 0
-
-    total_consumo = db.session.query(
-        func.sum(Rendimiento.consumo_total)
-    ).filter(
-        *filtro
-    ).scalar() or 0
-
-    total_recorrido = db.session.query(
-        func.sum(Rendimiento.recorrido_total)
-    ).filter(
-        *filtro
-    ).scalar() or 0
-
-    bajos = db.session.query(
-        func.count(Rendimiento.id)
-    ).filter(
-        Rendimiento.estado == "BAJO",
-        *filtro
-    ).scalar() or 0
-
-    porcentaje_bajo = (
-        bajos / total * 100
-    ) if total > 0 else 0
-
-    ultimo = (
-        Rendimiento.query
-        .filter(*filtro)
-        .order_by(Rendimiento.fecha.desc())
-        .first()
-    )
-
-    tanque_lleno = db.session.query(
-        func.count(Rendimiento.id)
-    ).filter(
-        Rendimiento.tipo_control == "TANQUE_LLENO",
-        *filtro
-    ).scalar() or 0
-
-    # =========================
-    # AGRUPACIÓN POR VEHÍCULO
-    # =========================
-    por_vehiculo = (
-        db.session.query(
-            Vehiculo.nombre,
-            func.avg(
-                Rendimiento.rendimiento_calculado
-            ),
-            func.count(
-                Rendimiento.id
-            )
-        )
-        .join(
-            Vehiculo,
-            Vehiculo.id == Rendimiento.vehiculo_id
-        )
-        .filter(
-            *filtro
-        )
-        .group_by(
-            Vehiculo.nombre
-        )
-        .all()
-    )
-
-    # =========================
-    # AGRUPACIÓN POR PROYECTO
-    # =========================
-    por_proyecto = (
-    db.session.query(
-        Proyecto.nombre,
-        func.avg(
-            Rendimiento.rendimiento_calculado
-        )
-    )
-    .join(
-        Rendimiento,
-        Rendimiento.proyecto_id == Proyecto.id
-    )
-    .filter(
-        *filtro
-    )
-    .group_by(
-        Proyecto.nombre
-    )
-    .all()
-    )
-
-    return render_template(
-        "rendimientos.html",
-        lista=(Rendimiento.query.filter(*filtro).order_by(Rendimiento.fecha.desc()).all()),
-        promedio=round(promedio, 2),
-        total_consumo=round(total_consumo, 2),
-        total_recorrido=round(total_recorrido, 2),
-        porcentaje_bajo=round(porcentaje_bajo, 1),
-        ultimo=ultimo.rendimiento_calculado if ultimo else 0,
-        tanque_lleno=tanque_lleno,
-        proyectos=proyectos,
-        proyecto_id=proyecto_id,
-        por_vehiculo=por_vehiculo,
-        por_proyecto=por_proyecto
-    )
-
-
 @app.route("/cargas", methods=["POST"])
 @permission_required("registrar","crear")
 def registrar_carga():
@@ -1792,22 +1640,20 @@ def registrar_carga():
         "msg": "Carga registrada"
     }
 
-@app.route("/reportes/rendimientos")
+@app.route("/reportes/consumos")
 @login_required
-@permission_required("rendimientos", "ver")
-def vista_reporte_rendimiento():
+def vista_reporte_consumos():
 
     return render_template(
-        "reporte_rendimientos.html"
+        "reporte_consumos.html"
     )
 
 # ===================================================================================
 # Reporte Rendimiento Excel
 # ===================================================================================
-@app.route("/reportes/rendimientos/excel")
+@app.route("/reportes/consumo/excel")
 @login_required
-@permission_required("rendimientos", "ver")
-def reporte_rendimiento():
+def reporte_consumos():
 
     tipo = request.args.get("tipo")
     fecha_str = request.args.get("fecha")
@@ -2086,107 +1932,9 @@ def reporte_rendimiento():
         mimetype="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
     )
 
-
-@app.route("/dashboard")
-@login_required
-def dashboard():
-
-    proyecto_id = request.args.get(
-    "proyecto_id",
-    type=int
-    )
-    proyectos = Proyecto.query.filter_by(
-    activo=True
-    ).all()
-
-    # Filtros del dashboard
-    filtro = [
-        Kardex.activo == True
-    ]
-
-    if proyecto_id:
-        filtro.append(
-            Kardex.proyecto_id == proyecto_id
-        )
-
-    # 1. Lista de últimos movimientos (Sintaxis 2.0 limpia)
-    lista = db.session.scalars(
-        db.select(Kardex)
-        .where(Kardex.tipo == "SALIDA", *filtro)
-        .order_by(Kardex.fecha.desc())
-        .limit(10) # Acotamos a los últimos 10 para no saturar el servidor
-    ).all()
-
-    # 2. Consumo Total de Combustible
-    total_consumo_scalar = db.session.query(func.sum(Kardex.cantidad)).filter(
-        Kardex.tipo == "SALIDA", *filtro
-    ).scalar()
-    total_consumo = float(total_consumo_scalar) if total_consumo_scalar else 0.0
-
-    # 3. Total de Despachos (Conteo)
-    total_abastecimientos = db.session.scalar(
-        db.select(func.count(Kardex.id)).where(Kardex.tipo == "SALIDA", *filtro)
-    ) or 0
-
-    # 4. CORRECCIÓN: Conteo correcto de Vehículos Únicos Activos
-    vehiculos_activos = db.session.scalar(
-        db.select(func.count(Kardex.vehiculo_id.distinct())).where(
-            Kardex.tipo == "SALIDA", *filtro
-        )
-    ) or 0
-
-    # 5. Promedio por despacho
-    consumo_promedio = round(total_consumo / total_abastecimientos, 2) if total_abastecimientos else 0.0
-
-    # 6. CORRECCIÓN GRÁFICOS: Mapeo seguro convirtiendo Decimal a float
-    por_vehiculo_raw = db.session.query(Vehiculo.nombre, func.sum(Kardex.cantidad))\
-        .join(Kardex, Kardex.vehiculo_id == Vehiculo.id)\
-        .filter(Kardex.tipo == "SALIDA", *filtro)\
-        .group_by(Vehiculo.nombre).all()
-    por_vehiculo = [[v[0], float(v[1])] for v in por_vehiculo_raw]
-
-    por_operador_raw = db.session.query(Operador.nombre, func.sum(Kardex.cantidad))\
-        .join(Kardex, Kardex.operador_id == Operador.id)\
-        .filter(Kardex.tipo == "SALIDA", *filtro)\
-        .group_by(Operador.nombre).all()
-    por_operador = [[o[0], float(o[1])] for o in por_operador_raw]
-
-    # 7. Información de tanques e inventario físico total
-    total_tanques = db.session.scalar(db.select(func.count(Tanque.id))) or 0
-    stock_total_scalar = db.session.query(func.sum(Tanque.stock_actual)).scalar()
-    
-    stock_total = float(stock_total_scalar) if stock_total_scalar else 0.0
-
-    # ==================================================================
-    # 🌟 NUEVOS ADITAMENTOS OPERATIVOS CRÍTICOS
-    # ==================================================================
-    # Alertas activas de rendimiento deficiente para el operador
-    alertas_criticas = db.session.scalar(
-        db.select(func.count(Alerta.id)).where(Alerta.tipo == "RENDIMIENTO_BAJO")
-    ) or 0
-
-    # Lista de tanques que están por debajo del 20% de su capacidad total
-    tanques_criticos = db.session.scalars(
-        db.select(Tanque).where(Tanque.stock_actual <= (Tanque.capacidad * 0.20))
-    ).all()
-
-    return render_template(
-        "dashboard_operativo.html",
-        lista=lista,
-        total_consumo=round(total_consumo, 2),
-        total_abastecimientos=total_abastecimientos,
-        vehiculos_activos=vehiculos_activos,
-        consumo_promedio=consumo_promedio,
-        por_vehiculo=por_vehiculo,
-        por_operador=por_operador,
-        total_tanques=total_tanques,
-        stock_total=round(stock_total, 2),
-        alertas_criticas=alertas_criticas,
-        tanques_criticos=tanques_criticos,
-        proyectos=proyectos,
-        proyecto_id=proyecto_id
-    )
-
+# =========================
+# DASH
+# =========================
 @app.route("/dashboard/gerencial")
 @login_required
 def dashboard_gerencial():
@@ -2349,6 +2097,247 @@ def dashboard_gerencial():
         proyectos=proyectos,
         proyecto_id=proyecto_id,
     )
+
+@app.route("/dashboard/operativo")
+@login_required
+def dashboard_operativo():
+
+    proyecto_id = request.args.get(
+    "proyecto_id",
+    type=int
+    )
+    proyectos = Proyecto.query.filter_by(
+    activo=True
+    ).all()
+
+    # Filtros del dashboard
+    filtro = [
+        Kardex.activo == True
+    ]
+
+    if proyecto_id:
+        filtro.append(
+            Kardex.proyecto_id == proyecto_id
+        )
+
+    # 1. Lista de últimos movimientos (Sintaxis 2.0 limpia)
+    lista = db.session.scalars(
+        db.select(Kardex)
+        .where(Kardex.tipo == "SALIDA", *filtro)
+        .order_by(Kardex.fecha.desc())
+        .limit(10) # Acotamos a los últimos 10 para no saturar el servidor
+    ).all()
+
+    # 2. Consumo Total de Combustible
+    total_consumo_scalar = db.session.query(func.sum(Kardex.cantidad)).filter(
+        Kardex.tipo == "SALIDA", *filtro
+    ).scalar()
+    total_consumo = float(total_consumo_scalar) if total_consumo_scalar else 0.0
+
+    # 3. Total de Despachos (Conteo)
+    total_abastecimientos = db.session.scalar(
+        db.select(func.count(Kardex.id)).where(Kardex.tipo == "SALIDA", *filtro)
+    ) or 0
+
+    # 4. CORRECCIÓN: Conteo correcto de Vehículos Únicos Activos
+    vehiculos_activos = db.session.scalar(
+        db.select(func.count(Kardex.vehiculo_id.distinct())).where(
+            Kardex.tipo == "SALIDA", *filtro
+        )
+    ) or 0
+
+    # 5. Promedio por despacho
+    consumo_promedio = round(total_consumo / total_abastecimientos, 2) if total_abastecimientos else 0.0
+
+    # 6. CORRECCIÓN GRÁFICOS: Mapeo seguro convirtiendo Decimal a float
+    por_vehiculo_raw = db.session.query(Vehiculo.nombre, func.sum(Kardex.cantidad))\
+        .join(Kardex, Kardex.vehiculo_id == Vehiculo.id)\
+        .filter(Kardex.tipo == "SALIDA", *filtro)\
+        .group_by(Vehiculo.nombre).all()
+    por_vehiculo = [[v[0], float(v[1])] for v in por_vehiculo_raw]
+
+    por_operador_raw = db.session.query(Operador.nombre, func.sum(Kardex.cantidad))\
+        .join(Kardex, Kardex.operador_id == Operador.id)\
+        .filter(Kardex.tipo == "SALIDA", *filtro)\
+        .group_by(Operador.nombre).all()
+    por_operador = [[o[0], float(o[1])] for o in por_operador_raw]
+
+    # 7. Información de tanques e inventario físico total
+    total_tanques = db.session.scalar(db.select(func.count(Tanque.id))) or 0
+    stock_total_scalar = db.session.query(func.sum(Tanque.stock_actual)).scalar()
+    
+    stock_total = float(stock_total_scalar) if stock_total_scalar else 0.0
+
+    # ==================================================================
+    # 🌟 NUEVOS ADITAMENTOS OPERATIVOS CRÍTICOS
+    # ==================================================================
+    # Alertas activas de rendimiento deficiente para el operador
+    alertas_criticas = db.session.scalar(
+        db.select(func.count(Alerta.id)).where(Alerta.tipo == "RENDIMIENTO_BAJO")
+    ) or 0
+
+    # Lista de tanques que están por debajo del 20% de su capacidad total
+    tanques_criticos = db.session.scalars(
+        db.select(Tanque).where(Tanque.stock_actual <= (Tanque.capacidad * 0.20))
+    ).all()
+
+    return render_template(
+        "dashboard_operativo.html",
+        lista=lista,
+        total_consumo=round(total_consumo, 2),
+        total_abastecimientos=total_abastecimientos,
+        vehiculos_activos=vehiculos_activos,
+        consumo_promedio=consumo_promedio,
+        por_vehiculo=por_vehiculo,
+        por_operador=por_operador,
+        total_tanques=total_tanques,
+        stock_total=round(stock_total, 2),
+        alertas_criticas=alertas_criticas,
+        tanques_criticos=tanques_criticos,
+        proyectos=proyectos,
+        proyecto_id=proyecto_id
+    )
+
+@app.route("/dashboard_rendimiento")
+@login_required
+def dashboard_rendimiento():
+
+    from sqlalchemy import func
+
+    proyecto_id = request.args.get(
+    "proyecto_id",
+    type=int
+    )
+    proyectos = Proyecto.query.filter_by(
+    activo=True
+    ).all()
+
+    # =========================
+    # FILTRO BASE
+    # =========================
+    filtro = []
+
+    if proyecto_id:
+        filtro.append(
+        Rendimiento.proyecto_id == proyecto_id
+    )
+
+    # =========================
+    # KPIs GENERALES
+    # =========================
+    total = db.session.query(
+        func.count(Rendimiento.id)
+    ).filter(
+        *filtro
+    ).scalar() or 0
+
+    promedio = db.session.query(
+        func.avg(Rendimiento.rendimiento_calculado)
+    ).filter(
+        *filtro
+    ).scalar() or 0
+
+    total_consumo = db.session.query(
+        func.sum(Rendimiento.consumo_total)
+    ).filter(
+        *filtro
+    ).scalar() or 0
+
+    total_recorrido = db.session.query(
+        func.sum(Rendimiento.recorrido_total)
+    ).filter(
+        *filtro
+    ).scalar() or 0
+
+    bajos = db.session.query(
+        func.count(Rendimiento.id)
+    ).filter(
+        Rendimiento.estado == "BAJO",
+        *filtro
+    ).scalar() or 0
+
+    porcentaje_bajo = (
+        bajos / total * 100
+    ) if total > 0 else 0
+
+    ultimo = (
+        Rendimiento.query
+        .filter(*filtro)
+        .order_by(Rendimiento.fecha.desc())
+        .first()
+    )
+
+    tanque_lleno = db.session.query(
+        func.count(Rendimiento.id)
+    ).filter(
+        Rendimiento.tipo_control == "TANQUE_LLENO",
+        *filtro
+    ).scalar() or 0
+
+    # =========================
+    # AGRUPACIÓN POR VEHÍCULO
+    # =========================
+    por_vehiculo = (
+        db.session.query(
+            Vehiculo.nombre,
+            func.avg(
+                Rendimiento.rendimiento_calculado
+            ),
+            func.count(
+                Rendimiento.id
+            )
+        )
+        .join(
+            Vehiculo,
+            Vehiculo.id == Rendimiento.vehiculo_id
+        )
+        .filter(
+            *filtro
+        )
+        .group_by(
+            Vehiculo.nombre
+        )
+        .all()
+    )
+
+    # =========================
+    # AGRUPACIÓN POR PROYECTO
+    # =========================
+    por_proyecto = (
+    db.session.query(
+        Proyecto.nombre_corto,
+        func.avg(
+            Rendimiento.rendimiento_calculado
+        )
+    )
+    .join(
+        Rendimiento,
+        Rendimiento.proyecto_id == Proyecto.id
+    )
+    .filter(
+        *filtro
+    )
+    .group_by(
+        Proyecto.nombre_corto
+    )
+    .all()
+    )
+
+    return render_template(
+        "dashboard_rendimiento.html",
+        lista=(Rendimiento.query.filter(*filtro).order_by(Rendimiento.fecha.desc()).all()),
+        promedio=round(promedio, 2),
+        total_consumo=round(total_consumo, 2),
+        total_recorrido=round(total_recorrido, 2),
+        porcentaje_bajo=round(porcentaje_bajo, 1),
+        ultimo=ultimo.rendimiento_calculado if ultimo else 0,
+        tanque_lleno=tanque_lleno,
+        proyectos=proyectos,
+        proyecto_id=proyecto_id,
+        por_vehiculo=por_vehiculo,
+        por_proyecto=por_proyecto
+    )
+
 
 if __name__ == "__main__":
     app.run(host="127.0.0.1", port=8007, debug=True)

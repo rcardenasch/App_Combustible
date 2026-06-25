@@ -1,6 +1,6 @@
 {% extends "base.html" %}
 
-{% block title %}Reporte de Rendimiento{% endblock %}
+{% block title %}Reporte de Consumo de Combustible{% endblock %}
 
 {% block content %}
 
@@ -10,10 +10,10 @@
         <div class="bg-success bg-opacity-10 p-2 rounded-3 me-3">
             <i class="bi bi-file-earmark-excel-fill text-success fs-4"></i>
         </div>
-        <h5 class="fw-bold mb-0">Reporte de Rendimientos</h5>
+        <h5 class="fw-bold mb-0">Reporte de Consumo de Combustible</h5>
     </div>
 
-    <form method="GET" action="/reportes/rendimientos/excel" class="row g-3">
+    <form method="GET" action="/reportes/consumo/excel" class="row g-3">
         <!-- Tipo de Reporte -->
         <div class="col-md-4">
             <label class="form-label fw-semibold text-secondary small">Tipo de reporte</label>
