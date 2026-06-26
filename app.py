@@ -2057,12 +2057,19 @@ def reporte_rendimientos():
         if p:
             proyecto_nombre = p.nombre
 
-    operador = request.args.get("operador")
+    # Obtener operador desde el Kardex asociado
+    if len(datos) > 0:
 
-    if operador:
-        op = Operador.query.get(int(operador))
-        if op:
-            operador_nombre = op.nombre
+        operadores = set()
+
+        for r in datos:
+            if r.kardex and r.kardex.operador:
+                operadores.add(r.kardex.operador.nombre)
+
+        if len(operadores) == 1:
+            operador_nombre = operadores.pop()
+        elif len(operadores) > 1:
+            operador_nombre = "VARIOS"
 
     ws["A2"] = "Proyecto:"
     ws["B2"] = proyecto_nombre
@@ -2070,19 +2077,16 @@ def reporte_rendimientos():
     ws["E2"] = "Vehículo:"
     ws["F2"] = vehiculo_nombre
 
-    ws["I2"] = "Operador:"
-    ws["J2"] = operador_nombre
+    ws["H2"] = "Operador:"
+    ws["I2"] = operador_nombre
 
-    #poner las etiquetas en negrita:
-    for c in ["A2","E2","I2"]:
+    for c in ["A2", "E2", "I2"]:
         ws[c].font = Font(bold=True)
 
     # Encabezados
     encabezados = [
         "Parte Diario",
         "Fecha",
-        "Proyecto",
-        "Vehículo",
         "Horómetro Inicial",
         "Horómetro Final",
         "Horas",
@@ -2115,17 +2119,15 @@ def reporte_rendimientos():
             - (r.horometro_abastecimiento_inicial or 0)
         )
 
-        ws.cell(row=row, column=1, value=r.parte_diario)
+        ws.cell(row=row,column=1,value=r.kardex.parte_diario if r.kardex else "")
         ws.cell(row=row, column=2, value=r.fecha.strftime("%d/%m/%Y"))
-        ws.cell(row=row, column=3, value=r.proyecto.nombre)
-        ws.cell(row=row, column=4, value=r.vehiculo.nombre)
-        ws.cell(row=row, column=5, value=r.horometro_abastecimiento_inicial)
-        ws.cell(row=row, column=6, value=r.horometro_abastecimiento_final)
-        ws.cell(row=row, column=7, value=horas)
-        ws.cell(row=row, column=8, value=r.consumo_total)
-        ws.cell(row=row, column=9, value=r.rendimiento_calculado)
-        ws.cell(row=row, column=10, value=r.tipo_control)
-        ws.cell(row=row, column=11, value=r.observacion)
+        ws.cell(row=row, column=3, value=r.horometro_abastecimiento_inicial)
+        ws.cell(row=row, column=4, value=r.horometro_abastecimiento_final)
+        ws.cell(row=row, column=5, value=horas)
+        ws.cell(row=row, column=6, value=r.consumo_total)
+        ws.cell(row=row, column=7, value=r.rendimiento_calculado)
+        ws.cell(row=row, column=8, value=r.tipo_control)
+        ws.cell(row=row, column=9, value=r.observacion)
 
         row += 1
 
