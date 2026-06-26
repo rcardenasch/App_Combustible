@@ -1947,7 +1947,7 @@ def reporte_consumos():
     )
 
 #=================================================================
-# Reporte de rendimietnos Excel
+# Reporte de abasteciientos y rendimientos Excel
 #=================================================================
 @app.route("/reportes/rendimientos")
 @login_required
@@ -1988,40 +1988,52 @@ def vista_reporte_rendimientos():
 @login_required
 @permission_required("reportes","ver")
 def reporte_rendimientos():
-    query = Rendimiento.query.join(Vehiculo)
     vehiculo = request.args.get("vehiculo")
     proyecto = request.args.get("proyecto")
     inicio = request.args.get("inicio")
     fin = request.args.get("fin")
 
+    query = Kardex.query.filter(
+    Kardex.tipo == "SALIDA",
+    Kardex.activo == True
+    )
+
     if current_user.proyecto_id:
         query = query.filter(
-            Rendimiento.proyecto_id == current_user.proyecto_id
+            Kardex.proyecto_id == current_user.proyecto_id
         )
 
     if vehiculo:
         query = query.filter(
-            Rendimiento.vehiculo_id == vehiculo
+            Kardex.vehiculo_id == vehiculo
         )
 
     if proyecto:
         query = query.filter(
-            Rendimiento.proyecto_id == proyecto
+            Kardex.proyecto_id == proyecto
         )
 
     if inicio:
         query = query.filter(
-            Rendimiento.fecha >= inicio
+            Kardex.fecha >= inicio
         )
 
     if fin:
         query = query.filter(
-            Rendimiento.fecha <= fin
+            Kardex.fecha <= fin
         )
 
     datos = query.order_by(
-        Rendimiento.fecha
+        Kardex.fecha,
+        Kardex.id
     ).all()
+
+    rendimientos = {
+        r.kardex_id: r
+        for r in Rendimiento.query.filter(
+            Rendimiento.kardex_id.in_([k.id for k in datos])
+        ).all()
+    }
     
     #Excel:
     row=5
@@ -2034,7 +2046,7 @@ def reporte_rendimientos():
     ws.title = "Rendimientos"
 
     # Título
-    ws.merge_cells("A1:J1")
+    ws.merge_cells("A1:N1")
     ws["A1"] = "REPORTE DE RENDIMIENTO DE MAQUINARIA"
     ws["A1"].font = Font(bold=True, size=14)
     ws["A1"].alignment = Alignment(horizontal="center")
@@ -2062,9 +2074,9 @@ def reporte_rendimientos():
 
         operadores = set()
 
-        for r in datos:
-            if r.kardex and r.kardex.operador:
-                operadores.add(r.kardex.operador.nombre)
+        for k in datos:
+            if k.operador:
+                operadores.add(k.operador.nombre)
 
         if len(operadores) == 1:
             operador_nombre = operadores.pop()
@@ -2085,13 +2097,19 @@ def reporte_rendimientos():
 
     # Encabezados
     encabezados = [
+
         "Parte Diario",
         "Fecha",
+        "Vehículo",
+        "Operador",
         "Horómetro Inicial",
         "Horómetro Final",
         "Horas",
+        "Abastecido (Gal)",     # k.cantidad
         "Combustible (Gal)",
+        "Tanque Lleno",
         "Rendimiento",
+        "Estado",
         "Tipo",
         "Observación"
     ]
@@ -2112,22 +2130,50 @@ def reporte_rendimientos():
     # Desde aquí empieza el detalle
     row = 4
 
-    for r in datos:
+    for k in datos:
 
-        horas = (
-            (r.horometro_abastecimiento_final or 0)
-            - (r.horometro_abastecimiento_inicial or 0)
-        )
+        rend = rendimientos.get(k.id)
 
-        ws.cell(row=row,column=1,value=r.kardex.parte_diario if r.kardex else "")
-        ws.cell(row=row, column=2, value=r.fecha.strftime("%d/%m/%Y"))
-        ws.cell(row=row, column=3, value=r.horometro_abastecimiento_inicial)
-        ws.cell(row=row, column=4, value=r.horometro_abastecimiento_final)
-        ws.cell(row=row, column=5, value=horas)
-        ws.cell(row=row, column=6, value=r.consumo_total)
-        ws.cell(row=row, column=7, value=r.rendimiento_calculado)
-        ws.cell(row=row, column=8, value=r.tipo_control)
-        ws.cell(row=row, column=9, value=r.observacion)
+        ws.cell(row=row, column=1, value=k.parte_diario)
+        ws.cell(row=row, column=2, value=k.fecha.strftime("%d/%m/%Y"))
+        ws.cell(row=row, column=3, value=k.vehiculo.nombre if k.vehiculo else "")
+        ws.cell(row=row, column=4, value=k.operador.nombre if k.operador else "")
+        ws.cell(row=row, column=5, value=k.horometro_inicial)
+        ws.cell(row=row, column=6, value=k.horometro_final)
+
+        # Horas
+        if rend:
+            horas = (
+                (rend.horometro_abastecimiento_final or 0)
+                - (rend.horometro_abastecimiento_inicial or 0)
+            )
+            ws.cell(row=row, column=7, value=horas)
+        else:
+            ws.cell(row=row, column=7, value="")
+
+        # Combustible abastecido en esta salida
+        ws.cell(row=row, column=8, value=k.cantidad)
+
+        # Consumo acumulado entre tanques llenos
+        if rend:
+            ws.cell(row=row, column=9, value=rend.consumo_total)
+        else:
+            ws.cell(row=row, column=9, value="")
+
+        # ¿Fue tanque lleno?
+        ws.cell(row=row, column=10, value="SI" if k.tanque_lleno else "")
+
+        # Datos del rendimiento (solo para tanque lleno)
+        if rend:
+            ws.cell(row=row, column=11, value=rend.rendimiento_calculado)
+            ws.cell(row=row, column=12, value=rend.estado)
+            ws.cell(row=row, column=13, value=rend.tipo_control)
+        else:
+            ws.cell(row=row, column=11, value="")
+            ws.cell(row=row, column=12, value="")
+            ws.cell(row=row, column=13, value="")
+
+        ws.cell(row=row, column=14, value=k.observacion)
 
         row += 1
 
@@ -2145,7 +2191,6 @@ def reporte_rendimientos():
         download_name="reporte_rendimientos.xlsx",
         mimetype="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
     )
-
 
 # =========================
 # DASH
