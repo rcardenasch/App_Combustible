@@ -2046,7 +2046,7 @@ def reporte_rendimientos():
     ws.title = "Rendimientos"
 
     # Título
-    ws.merge_cells("A1:N1")
+    ws.merge_cells("A1:L1")
     ws["A1"] = "REPORTE DE RENDIMIENTO DE MAQUINARIA"
     ws["A1"].font = Font(bold=True, size=14)
     ws["A1"].alignment = Alignment(horizontal="center")
@@ -2100,15 +2100,13 @@ def reporte_rendimientos():
 
         "Parte Diario",
         "Fecha",
-        "Vehículo",
-        "Operador",
         "Horómetro Inicial",
         "Horómetro Final",
         "Horas",
         "Abastecido (Gal)",     # k.cantidad
         "Combustible (Gal)",
         "Tanque Lleno",
-        "Rendimiento",
+        "Rendimiento (Gal/Hr)",
         "Estado",
         "Tipo",
         "Observación"
@@ -2136,10 +2134,8 @@ def reporte_rendimientos():
 
         ws.cell(row=row, column=1, value=k.parte_diario)
         ws.cell(row=row, column=2, value=k.fecha.strftime("%d/%m/%Y"))
-        ws.cell(row=row, column=3, value=k.vehiculo.nombre if k.vehiculo else "")
-        ws.cell(row=row, column=4, value=k.operador.nombre if k.operador else "")
-        ws.cell(row=row, column=5, value=k.horometro_inicial)
-        ws.cell(row=row, column=6, value=k.horometro_final)
+        ws.cell(row=row, column=3, value=k.horometro_inicial)
+        ws.cell(row=row, column=4, value=k.horometro_final)
 
         # Horas
         if rend:
@@ -2147,33 +2143,33 @@ def reporte_rendimientos():
                 (rend.horometro_abastecimiento_final or 0)
                 - (rend.horometro_abastecimiento_inicial or 0)
             )
-            ws.cell(row=row, column=7, value=horas)
+            ws.cell(row=row, column=5, value=horas)
         else:
-            ws.cell(row=row, column=7, value="")
+            ws.cell(row=row, column=5, value="")
 
         # Combustible abastecido en esta salida
-        ws.cell(row=row, column=8, value=k.cantidad)
+        ws.cell(row=row, column=6, value=k.cantidad)
 
         # Consumo acumulado entre tanques llenos
         if rend:
-            ws.cell(row=row, column=9, value=rend.consumo_total)
+            ws.cell(row=row, column=7, value=rend.consumo_total)
         else:
-            ws.cell(row=row, column=9, value="")
+            ws.cell(row=row, column=7, value="")
 
         # ¿Fue tanque lleno?
-        ws.cell(row=row, column=10, value="SI" if k.tanque_lleno else "")
+        ws.cell(row=row, column=8, value="SI" if k.tanque_lleno else "")
 
         # Datos del rendimiento (solo para tanque lleno)
         if rend:
-            ws.cell(row=row, column=11, value=rend.rendimiento_calculado)
-            ws.cell(row=row, column=12, value=rend.estado)
-            ws.cell(row=row, column=13, value=rend.tipo_control)
+            ws.cell(row=row, column=9, value=rend.rendimiento_calculado)
+            ws.cell(row=row, column=10, value=rend.estado)
+            ws.cell(row=row, column=11, value=rend.tipo_control)
         else:
+            ws.cell(row=row, column=9, value="")
+            ws.cell(row=row, column=10, value="")
             ws.cell(row=row, column=11, value="")
-            ws.cell(row=row, column=12, value="")
-            ws.cell(row=row, column=13, value="")
 
-        ws.cell(row=row, column=14, value=k.observacion)
+        ws.cell(row=row, column=12, value=k.observacion)
 
         row += 1
 
