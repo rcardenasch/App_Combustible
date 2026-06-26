@@ -265,6 +265,18 @@ class Rendimiento(db.Model):
         "Vehiculo"
     )
 
+    kardex_id = db.Column(
+        db.Integer,
+        db.ForeignKey("kardex.id"),
+        nullable=True,
+        index=True
+    )
+
+    kardex = db.relationship(
+        "Kardex",
+        backref="rendimiento"
+    )
+
 
 
 # =========================

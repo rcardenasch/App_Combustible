@@ -5,7 +5,6 @@
 from flask import Flask, request, redirect, url_for, render_template, flash, jsonify,send_file
 from flask_login import LoginManager, login_user, logout_user, login_required, current_user
 from models import (db,Usuario, Role, Permission,Module,Proyecto,Vehiculo,Alerta,Operador,Kardex,Rendimiento,Tanque)
-from openpyxl.styles import PatternFill
 from config import Config
 from functools import wraps
 from flask import jsonify
@@ -19,6 +18,8 @@ from sqlalchemy import cast, String,or_,func
 from datetime import datetime,timedelta
 from sqlalchemy import text
 from openpyxl import Workbook
+from openpyxl.styles import Font, PatternFill, Alignment
+
 import io
 import pytz
 
@@ -1330,6 +1331,8 @@ def kardex_nuevo():
                     nuevo_rend = Rendimiento(
                         vehiculo_id=vehiculo_id,
                         proyecto_id=nuevo.proyecto_id,
+                        kardex_id=nuevo.id,
+                        fecha=nuevo.fecha,  
                         consumo_total=consumo_total,
                         recorrido_total=recorrido_total,
                         rendimiento_calculado=rendimiento,
@@ -1568,6 +1571,8 @@ def recalcular_rendimientos_vehiculo(vehiculo_id):
         nuevo_rend = Rendimiento(
             vehiculo_id=vehiculo_id,
             proyecto_id=actual.proyecto_id,
+            fecha = actual.fecha,
+            kardex_id = actual.id,
             consumo_total=consumo_total,
             recorrido_total=recorrido_total,
             rendimiento_calculado=rendimiento,
@@ -1645,6 +1650,11 @@ def registrar_carga():
         "msg": "Carga registrada"
     }
 
+
+
+# ===================================================================================
+# Reporte Consumos Excel
+# ===================================================================================
 @app.route("/reportes/consumos")
 @login_required
 @permission_required("reportes","ver")
@@ -1654,9 +1664,6 @@ def vista_reporte_consumos():
         "reporte_consumos.html"
     )
 
-# ===================================================================================
-# Reporte Rendimiento Excel
-# ===================================================================================
 @app.route("/reportes/consumo/excel")
 @login_required
 @permission_required("reportes","ver")
@@ -1938,6 +1945,205 @@ def reporte_consumos():
         download_name=f"reporte_{tipo}.xlsx",
         mimetype="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
     )
+
+#=================================================================
+# Reporte de rendimietnos Excel
+#=================================================================
+@app.route("/reportes/rendimientos")
+@login_required
+@permission_required("reportes","ver")
+def vista_reporte_rendimientos():
+    proyectos = Proyecto.query.filter_by(
+        activo=True
+    ).order_by(
+        Proyecto.nombre
+    ).all()
+
+    vehiculos = Vehiculo.query.filter_by(
+        activo=True
+    ).order_by(
+        Vehiculo.nombre
+    ).all()
+
+    if current_user.proyecto_id:
+
+        proyectos = Proyecto.query.filter_by(
+            id=current_user.proyecto_id
+        ).all()
+
+        vehiculos = Vehiculo.query.filter_by(
+            proyecto_id=current_user.proyecto_id,
+            activo=True
+        ).order_by(
+            Vehiculo.nombre
+        ).all()
+
+    return render_template(
+        "reporte_rendimientos.html",
+        proyectos=proyectos,
+        vehiculos=vehiculos
+    )
+
+@app.route("/reportes/rendimientos/excel")
+@login_required
+@permission_required("reportes","ver")
+def reporte_rendimientos():
+    query = Rendimiento.query.join(Vehiculo)
+    vehiculo = request.args.get("vehiculo")
+    proyecto = request.args.get("proyecto")
+    inicio = request.args.get("inicio")
+    fin = request.args.get("fin")
+
+    if current_user.proyecto_id:
+        query = query.filter(
+            Rendimiento.proyecto_id == current_user.proyecto_id
+        )
+
+    if vehiculo:
+        query = query.filter(
+            Rendimiento.vehiculo_id == vehiculo
+        )
+
+    if proyecto:
+        query = query.filter(
+            Rendimiento.proyecto_id == proyecto
+        )
+
+    if inicio:
+        query = query.filter(
+            Rendimiento.fecha >= inicio
+        )
+
+    if fin:
+        query = query.filter(
+            Rendimiento.fecha <= fin
+        )
+
+    datos = query.order_by(
+        Rendimiento.fecha
+    ).all()
+    
+    #Excel:
+    row=5
+
+    # Crear libro
+    wb = Workbook()
+
+    # Hoja activa
+    ws = wb.active
+    ws.title = "Rendimientos"
+
+    # Título
+    ws.merge_cells("A1:J1")
+    ws["A1"] = "REPORTE DE RENDIMIENTO DE MAQUINARIA"
+    ws["A1"].font = Font(bold=True, size=14)
+    ws["A1"].alignment = Alignment(horizontal="center")
+
+    # ==========================
+    # DATOS DEL REPORTE
+    # ==========================
+
+    vehiculo_nombre = "TODOS"
+    proyecto_nombre = "TODOS"
+    operador_nombre = "TODOS"
+
+    if vehiculo:
+        v = Vehiculo.query.get(int(vehiculo))
+        if v:
+            vehiculo_nombre = v.nombre
+
+    if proyecto:
+        p = Proyecto.query.get(int(proyecto))
+        if p:
+            proyecto_nombre = p.nombre
+
+    operador = request.args.get("operador")
+
+    if operador:
+        op = Operador.query.get(int(operador))
+        if op:
+            operador_nombre = op.nombre
+
+    ws["A2"] = "Proyecto:"
+    ws["B2"] = proyecto_nombre
+
+    ws["E2"] = "Vehículo:"
+    ws["F2"] = vehiculo_nombre
+
+    ws["I2"] = "Operador:"
+    ws["J2"] = operador_nombre
+
+    #poner las etiquetas en negrita:
+    for c in ["A2","E2","I2"]:
+        ws[c].font = Font(bold=True)
+
+    # Encabezados
+    encabezados = [
+        "Parte Diario",
+        "Fecha",
+        "Proyecto",
+        "Vehículo",
+        "Horómetro Inicial",
+        "Horómetro Final",
+        "Horas",
+        "Combustible (Gal)",
+        "Rendimiento",
+        "Tipo",
+        "Observación"
+    ]
+
+    fill = PatternFill(
+        fill_type="solid",
+        start_color="D9EAD3",
+        end_color="D9EAD3"
+    )
+
+    for col, texto in enumerate(encabezados, start=1):
+        celda = ws.cell(row=3, column=col)
+        celda.value = texto
+        celda.fill = fill
+        celda.font = Font(bold=True)
+
+
+    # Desde aquí empieza el detalle
+    row = 4
+
+    for r in datos:
+
+        horas = (
+            (r.horometro_abastecimiento_final or 0)
+            - (r.horometro_abastecimiento_inicial or 0)
+        )
+
+        ws.cell(row=row, column=1, value=r.parte_diario)
+        ws.cell(row=row, column=2, value=r.fecha.strftime("%d/%m/%Y"))
+        ws.cell(row=row, column=3, value=r.proyecto.nombre)
+        ws.cell(row=row, column=4, value=r.vehiculo.nombre)
+        ws.cell(row=row, column=5, value=r.horometro_abastecimiento_inicial)
+        ws.cell(row=row, column=6, value=r.horometro_abastecimiento_final)
+        ws.cell(row=row, column=7, value=horas)
+        ws.cell(row=row, column=8, value=r.consumo_total)
+        ws.cell(row=row, column=9, value=r.rendimiento_calculado)
+        ws.cell(row=row, column=10, value=r.tipo_control)
+        ws.cell(row=row, column=11, value=r.observacion)
+
+        row += 1
+
+    # FUERA DEL FOR
+
+    output = io.BytesIO()
+
+    wb.save(output)
+
+    output.seek(0)
+
+    return send_file(
+        output,
+        as_attachment=True,
+        download_name="reporte_rendimientos.xlsx",
+        mimetype="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+    )
+
 
 # =========================
 # DASH

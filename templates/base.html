@@ -37,7 +37,7 @@
         <h4 class="text-center text-white mb-4 fw-bold">
             <i class="bi bi-fuel-pump-fill text-warning me-2"></i>Combustible
         </h4>
-<hr>
+        <hr>
         <small class="px-3 text-secondary">Dashboard</small>
         <a href="{{ url_for('index') }}">
             <i class="bi bi-pie-chart-fill me-2"></i> Gerencial
@@ -90,8 +90,13 @@
         <small class="px-3 text-secondary">Reportes</small>
 
         <a href="{{ url_for('vista_reporte_consumos') }}">
-            <i class="bi bi-bar-chart-line me-2"></i> Reporte de consumo
+            <i class="bi bi-fuel-pump me-2"></i> Reporte de consumo
         </a>
+
+        <a href="{{ url_for('vista_reporte_rendimientos') }}">
+            <i class="bi bi-speedometer2 me-2"></i> Reporte de rendimiento
+        </a>
+
     </div>
 
     <!-- OVERLAY MOBILE -->
