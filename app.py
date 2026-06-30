@@ -28,13 +28,11 @@ PERU_TZ = pytz.timezone("America/Lima")
 def now_lima():
     return datetime.now(PERU_TZ).replace(tzinfo=None)
 
-
 # ------------------------
 # APP
 # ------------------------
 app = Flask(__name__, static_folder='static')
 app.config.from_object(Config)
-
 
 # ------------------------
 # INIT
@@ -50,11 +48,9 @@ login_manager.login_message = None
 def unauthorized():
     return redirect(url_for('login'))
 
-
 @login_manager.user_loader
 def load_user(user_id):
     return db.session.get(Usuario, int(user_id))
-
 
 # ------------------------
 # CONFIG PERMISOS
@@ -74,7 +70,6 @@ MODULOS = [
 ACCIONES = ["ver", "crear", "editar", "eliminar"]
 
 ACCIONES_KARDEX = ["ver","crear", "editar","eliminar"]
-
 
 def now_utc():
     return datetime.utcnow()
@@ -136,7 +131,6 @@ def seed_data():
     except Exception as e:
         print("⚠️ Error en seed:", e)
 
-
 # ------------------------
 # SOLO TEST DE ARRANQUE (LIVIANO)
 # ------------------------
@@ -174,7 +168,6 @@ def validar_texto(valor, campo, min_len=3, max_len=150):
         return f"{campo} no debe exceder {max_len} caracteres"
     return None
 
-
 def validar_numero(valor, campo, tipo=float, minimo=0):
     try:
         num = tipo(valor)
@@ -183,7 +176,6 @@ def validar_numero(valor, campo, tipo=float, minimo=0):
         return None
     except:
         return f"{campo} inválido"
-
 
 def validar_email(email):
     if not email:
@@ -213,7 +205,6 @@ def permission_required(modulo, accion):
         return wrapper
     return decorator
 
-
 # =========================
 # RUTAS BASE
 # =========================
@@ -223,7 +214,6 @@ def permission_required(modulo, accion):
 def index():
     return redirect(url_for("dashboard_gerencial"))
 
-    
 
 @app.route('/login', methods=['GET','POST'])
 def login():
@@ -249,7 +239,6 @@ def logout():
     logout_user()
     session.clear()  # 🔥 borra toda la sesión
     return redirect(url_for('login'))
-
 
 # =========================
 # CRUD USUARIOS
@@ -429,7 +418,6 @@ def usuarios_eliminar(id):
 # =========================
 # CRUD ROLES
 # =========================
-
 @app.route("/roles")
 @login_required
 @permission_required("roles", "ver")
@@ -451,7 +439,6 @@ def roles_list():
         permisos_agrupados=permisos_agrupados,
         modulos=Module.query.all()
     )
-
 
 @app.route("/roles/nuevo", methods=["POST"])
 @login_required
@@ -528,7 +515,6 @@ def roles_eliminar(id):
 
     return redirect(url_for("roles_list"))
 
-
 # =========================
 # VEHICULOS
 # =========================
@@ -589,7 +575,6 @@ def vehiculos_nuevo():
         flash(f"Error: {str(e)}", "danger")
 
     return redirect(url_for("vehiculos_list"))
-
 
 @app.route("/vehiculos/editar/<int:id>", methods=["POST"])
 @login_required
@@ -686,7 +671,6 @@ def proyectos_nuevo():
 
     return redirect(url_for("proyectos_list"))
 
-
 @app.route("/proyectos/editar/<int:id>", methods=["POST"])
 @login_required
 @permission_required("proyectos","editar")
@@ -704,7 +688,6 @@ def proyectos_editar(id):
     flash("Proyecto actualizado correctamente", "success")
 
     return redirect(url_for("proyectos_list"))
-
 
 @app.route("/proyectos/eliminar/<int:id>", methods=["POST"])
 @login_required
@@ -764,7 +747,6 @@ def operadores_nuevo():
 
     return redirect(url_for("operadores_list"))
 
-
 @app.route("/operadores/editar/<int:id>", methods=["POST"])
 @login_required
 @permission_required("operadores", "editar")
@@ -794,7 +776,6 @@ def operadores_editar(id):
         flash(f"Error: {str(e)}", "danger")
 
     return redirect(url_for("operadores_list"))
-
 
 @app.route("/operadores/eliminar/<int:id>", methods=["POST"])
 @login_required
@@ -1649,8 +1630,6 @@ def registrar_carga():
     return {
         "msg": "Carga registrada"
     }
-
-
 
 # ===================================================================================
 # Reporte Consumos Excel
