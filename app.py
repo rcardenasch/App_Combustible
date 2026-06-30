@@ -1660,8 +1660,35 @@ def registrar_carga():
 @permission_required("reportes","ver")
 def vista_reporte_consumos():
 
+    proyectos = Proyecto.query.filter_by(
+        activo=True
+    ).order_by(
+        Proyecto.nombre
+    ).all()
+
+    vehiculos = Vehiculo.query.filter_by(
+        activo=True
+    ).order_by(
+        Vehiculo.nombre
+    ).all()
+
+    if current_user.proyecto_id:
+
+        proyectos = Proyecto.query.filter_by(
+            id=current_user.proyecto_id
+        ).all()
+
+        vehiculos = Vehiculo.query.filter_by(
+            proyecto_id=current_user.proyecto_id,
+            activo=True
+        ).order_by(
+            Vehiculo.nombre
+        ).all()
+
     return render_template(
-        "reporte_consumos.html"
+        "reporte_consumos.html",
+        proyectos=proyectos,
+        vehiculos=vehiculos
     )
 
 @app.route("/reportes/consumo/excel")
@@ -1669,6 +1696,8 @@ def vista_reporte_consumos():
 @permission_required("reportes","ver")
 def reporte_consumos():
 
+    vehiculo = request.args.get("vehiculo")
+    proyecto = request.args.get("proyecto")
     tipo = request.args.get("tipo")
     fecha_str = request.args.get("fecha")
 
@@ -1733,15 +1762,28 @@ def reporte_consumos():
         Vehiculo.activo == True
     )
 
+    # Restricción por proyecto del usuario
     if current_user.proyecto_id:
-
         query = query.filter(
             Vehiculo.proyecto_id == current_user.proyecto_id
+        )
+
+    # Filtro por proyecto
+    if proyecto:
+        query = query.filter(
+            Vehiculo.proyecto_id == int(proyecto)
+        )
+
+    # Filtro por vehículo
+    if vehiculo:
+        query = query.filter(
+            Vehiculo.id == int(vehiculo)
         )
 
     vehiculos = query.order_by(
         Vehiculo.nombre
     ).all()
+
 
     # =========================
     # LISTA DE DÍAS
@@ -1761,9 +1803,23 @@ def reporte_consumos():
     # CONSUMOS AGRUPADOS
     # (UNA SOLA CONSULTA)
     # =========================
+    proyecto_nombre = "TODOS"
+    vehiculo_nombre = "TODOS"
 
+    if proyecto:
+        p = Proyecto.query.get(int(proyecto))
+        if p:
+            proyecto_nombre = p.nombre
+
+    if vehiculo:
+        v = Vehiculo.query.get(int(vehiculo))
+        if v:
+            vehiculo_nombre = v.nombre
+
+    
     ids_vehiculos = [v.id for v in vehiculos]
 
+    # SIEMPRE crear el diccionario
     consumos_dict = {}
 
     if ids_vehiculos:
@@ -1798,36 +1854,55 @@ def reporte_consumos():
 
     ws = wb.active
 
-    ws.title = "Reporte"
+    ws.title = "Reporte_Consumo"
 
     # =========================
     # CABECERA
     # =========================
-
+    # Título
+    ws.merge_cells("A1:I1")
     ws["A1"] = "REPORTE DE CONSUMO DE COMBUSTIBLE"
-    ws["A2"] = f"Periodo: {inicio.date()} - {fin.date()}"
+    ws["A1"].font = Font(bold=True, size=14)
+    ws["A1"].alignment = Alignment(horizontal="center")
 
+    ws["A2"] = "Proyecto:"
+    ws["B2"] = proyecto_nombre
+
+    ws["D2"] = "Vehículo:"
+    ws["E2"] = vehiculo_nombre
+
+    ws["A3"] = "Periodo:"
+    ws["B3"] = f"{inicio.strftime('%d/%m/%Y')} - {fin.strftime('%d/%m/%Y')}"
+
+    for c in ["A2", "D2", "A3"]:
+        ws[c].font = Font(bold=True)
+
+    fill = PatternFill(
+        fill_type="solid",
+        start_color="D9EAD3",
+        end_color="D9EAD3"
+    )
     # =========================
     # ENCABEZADOS
     # =========================
 
-    ws.cell(row=4, column=1, value="ITEM")
-    ws.cell(row=4, column=2, value="EQUIPO")
+    ws.cell(row=5, column=1, value="ITEM").fill=fill
+    ws.cell(row=5, column=2, value="EQUIPO").fill=fill
 
     col_total = 3
 
     for d in dias:
 
         ws.cell(
-            row=4,
+            row=5,
             column=col_total,
             value=d.strftime("%d-%b")
-        )
+        ).fill=fill
 
         col_total += 1
 
     ws.cell(
-        row=4,
+        row=5,
         column=col_total,
         value="TOTAL"
     )
@@ -1837,11 +1912,10 @@ def reporte_consumos():
     fill_yellow = PatternFill(
         start_color="FFFF00",
         end_color="FFFF00",
-        fill_type="solid"
-    )
+        fill_type="solid")
 
     ws.cell(
-        row=4,
+        row=5,
         column=col_total
     ).fill = fill_yellow
 
@@ -1849,7 +1923,7 @@ def reporte_consumos():
     # DETALLE
     # =========================
 
-    row = 5
+    row = 6
 
     for i, vehiculo in enumerate(
         vehiculos,
@@ -1902,7 +1976,7 @@ def reporte_consumos():
     # FORMATO
     # =========================
 
-    ws.freeze_panes = "C5"
+    ws.freeze_panes = "C6"
 
     for columna in ws.columns:
 
@@ -1942,7 +2016,7 @@ def reporte_consumos():
     return send_file(
         output,
         as_attachment=True,
-        download_name=f"reporte_{tipo}.xlsx",
+        download_name=f"reporte_{tipo}_consumo_combustible.xlsx",
         mimetype="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
     )
 
@@ -2043,7 +2117,7 @@ def reporte_rendimientos():
 
     # Hoja activa
     ws = wb.active
-    ws.title = "Rendimientos"
+    ws.title = "Reporte_Consumo_Rendimientos"
 
     # Título
     ws.merge_cells("A1:L1")
@@ -2184,7 +2258,7 @@ def reporte_rendimientos():
     return send_file(
         output,
         as_attachment=True,
-        download_name="reporte_rendimientos.xlsx",
+        download_name="reporte_consumo_rendimientos.xlsx",
         mimetype="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
     )
 
