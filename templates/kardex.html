@@ -158,12 +158,12 @@
                         <td class="text-end">
                             <span
                                 class="fw-bold fs-6 {% if k.tipo == 'SALIDA' %}text-danger{% else %}text-success{% endif %}">
-                                {{ k.cantidad }}
+                                {{"{:,.2f}".format(k.cantidad) }}
                             </span>
                             <span class="text-muted small"> gls</span>
                         </td>
                         <td class="text-center">
-                            <span class="badge bg-dark-subtle text-dark fw-medium">{{ k.precio_unitario or '-' }}</span>
+                            <span class="badge bg-dark-subtle text-dark fw-medium">S/ {{ "{:,.2f}".format(k.precio_unitario) or '-' }}</span>
                         </td>
                         <td class="text-center">
                             {% if k.horometro_inicial %}

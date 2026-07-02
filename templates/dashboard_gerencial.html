@@ -46,7 +46,7 @@
             <div class="card-body">
                 <div class="text-muted small fw-bold">COMPRAS</div>
                 <h2 class="fw-bold text-success mb-0">
-                    {{ "%.2f"|format(total_compras) }}
+                    {{ "{:,.2f}".format(total_compras) }}
                 </h2>
                 <small class="text-muted">
                     Galones ingresados
@@ -60,7 +60,7 @@
             <div class="card-body">
                 <div class="text-muted small fw-bold">CONSUMO</div>
                 <h2 class="fw-bold text-danger mb-0">
-                    {{ "%.2f"|format(total_consumo) }}
+                    {{ "{:,.2f}".format(total_consumo) }}
                 </h2>
                 <small class="text-muted">
                     Galones despachados
@@ -74,7 +74,7 @@
             <div class="card-body">
                 <div class="text-muted small fw-bold">STOCK ACTUAL</div>
                 <h2 class="fw-bold text-primary mb-0">
-                    {{ "%.2f"|format(stock_total) }}
+                    {{ "{:,.2f}".format(stock_total) }}
                 </h2>
                 <small class="text-muted">
                     Galones disponibles
@@ -88,7 +88,7 @@
             <div class="card-body">
                 <div class="text-muted small fw-bold">BALANCE</div>
                 <h2 class="fw-bold text-warning mb-0">
-                    {{ "%.2f"|format(balance) }}
+                    {{ "{:,.2f}".format(balance) }}
                 </h2>
                 <small class="text-muted">
                     Compras - Consumo
@@ -225,7 +225,7 @@
 
         <h6 class="fw-bold mb-0">
             <i class="bi bi-clock-history me-2"></i>
-            Historial de Movimientos
+            Historial de últimos 20 Movimientos
         </h6>
 
     </div>
@@ -297,7 +297,7 @@
                         </td>
 
                         <td class="text-end fw-bold">
-                            {{ "%.2f"|format(m.cantidad or 0) }}
+                            {{ "{:,.2f}".format(m.cantidad or 0) }}
                         </td>
 
                         <td>
@@ -403,40 +403,20 @@
         $('#tablaMovimientos').DataTable({
 
             pageLength: 10,
-
             responsive: true,
-
-            order: [[0, 'desc']],
-
+            order: [],   // respeta el orden recibido desde Flask
             dom: 'Bfrtip',
-
             buttons: [
                 'excel',
                 'csv',
                 'print'
             ],
-
             language: {
-
-                search: "🔍 Buscar:",
-
-                lengthMenu:
-                    "Mostrar _MENU_ registros",
-
-                info:
-                    "Mostrando _START_ a _END_ de _TOTAL_ registros",
-
-                zeroRecords:
-                    "No se encontraron registros",
-
-                paginate: {
-
-                    previous: "Anterior",
-
-                    next: "Siguiente"
-
-                }
-
+                search: "Buscar:",
+                lengthMenu: "Mostrar _MENU_ registros",
+                info: "Mostrando _START_ a _END_ de _TOTAL_",
+                emptyTable: "No hay Movimientos disponibles",
+                paginate: { previous: "Anterior", next: "Siguiente" }
             }
 
         });

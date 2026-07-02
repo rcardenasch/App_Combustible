@@ -70,14 +70,14 @@ $('#modalNuevo').on('hidden.bs.modal', function () {
         // 2. Inicializar DataTable (UNA SOLA VEZ)
         if ($(".datatable").length) {
             $(".datatable").DataTable({
-                pageLength: 5,
+                pageLength: 10,
                 responsive: true,
                 order: [],   // respeta el orden recibido desde Flask
                 language: {
                     search: "Buscar:",
                     lengthMenu: "Mostrar _MENU_ registros",
                     info: "Mostrando _START_ a _END_ de _TOTAL_",
-                    emptyTable: "No hay vehículos",
+                    emptyTable: "No hay Movimientos registrados",
                     paginate: { previous: "Anterior", next: "Siguiente" }
                 }
             });
