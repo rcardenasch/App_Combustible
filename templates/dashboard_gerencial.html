@@ -256,8 +256,10 @@
 
                     <tr>
 
-                        <td>
-                            {{ m.fecha.strftime('%d/%m/%Y %H:%M') }}
+                        <td class="ps-4">
+                            <div class="small fw-bold">{{ m.fecha.strftime("%d/%m/%Y") }}</div>
+                            <div class="text-muted" style="font-size: 0.75rem;">{{ m.fecha.strftime("%H:%M") }} hrs
+                            </div>
                         </td>
 
                         <td>
@@ -415,7 +417,7 @@
                 search: "Buscar:",
                 lengthMenu: "Mostrar _MENU_ registros",
                 info: "Mostrando _START_ a _END_ de _TOTAL_",
-                emptyTable: "No hay Movimientos disponibles",
+                emptyTable: "No hay movimientos disponibles",
                 paginate: { previous: "Anterior", next: "Siguiente" }
             }
 
