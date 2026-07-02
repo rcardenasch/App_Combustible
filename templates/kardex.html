@@ -32,19 +32,19 @@
             <div class="row g-2 align-items-end">
 
                 <div class="col-md-2">
-                    <label class="form-label small fw-bold">Desde</label>
+                    <label class="form-label fw-semibold text-secondary small">Desde</label>
                     <input type="date" name="fecha_inicio" class="form-control form-control-sm"
                         value="{{ request.args.get('fecha_inicio', '') }}">
                 </div>
 
                 <div class="col-md-2">
-                    <label class="form-label small fw-bold">Hasta</label>
+                    <label class="form-label fw-semibold text-secondary small">Hasta</label>
                     <input type="date" name="fecha_fin" class="form-control form-control-sm"
                         value="{{ request.args.get('fecha_fin', '') }}">
                 </div>
 
                 <div class="col-md-2">
-                    <label class="form-label small fw-bold">Proyecto</label>
+                    <label class="form-label fw-semibold text-secondary small">Proyecto</label>
                     <select name="proyecto_id" class="form-select form-select-sm">
                         <option value="">Todos</option>
                         {% for p in proyectos %}
@@ -57,7 +57,7 @@
                 </div>
 
                 <div class="col-md-2">
-                    <label class="form-label small fw-bold">Tipo</label>
+                    <label class="form-label fw-semibold text-secondary small">Tipo</label>
                     <select name="tipo" class="form-select form-select-sm">
                         <option value="">Todos</option>
                         <option value="ENTRADA" {% if request.args.get('tipo')=='ENTRADA' %}selected{% endif %}>ENTRADA
@@ -70,7 +70,7 @@
                 </div>
 
                 <div class="col-md-2">
-                    <label class="form-label small fw-bold">Vehículo</label>
+                    <label class="form-label fw-semibold text-secondary small">Vehículo</label>
                     <select name="vehiculo_id" class="form-select form-select-sm">
                         <option value="">Todos</option>
                         {% for v in vehiculos %}
@@ -83,7 +83,7 @@
                 </div>
 
                 <div class="col-md-2">
-                    <label class="form-label small fw-bold">Buscar</label>
+                    <label class="form-label fw-semibold text-secondary small">Buscar</label>
                     <input type="text" name="buscar" class="form-control form-control-sm"
                         placeholder="Parte, factura..." value="{{ request.args.get('buscar', '') }}">
                 </div>
@@ -108,8 +108,8 @@
         <div class="table-responsive">
             <table class="table table-hover align-middle mb-0 datatable">
                 <thead class="bg-light text-secondary">
-                    <tr>
-                        <th class="ps-4 py-3 text-uppercase small fw-bold">Fecha / Hora</th>
+                    <tr> 
+                        <th class="ps-4 text-uppercase small fw-bold">Fecha / Hora</th>
                         <th class="py-3 text-uppercase small fw-bold">Operación</th>
                         <th class="py-3 text-uppercase small fw-bold">Vehículo / Equipo</th>
                         <th class="py-3 text-uppercase small fw-bold">Origen (Tanque)</th>
