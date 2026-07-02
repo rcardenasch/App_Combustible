@@ -153,10 +153,11 @@
                         <div class="col-md-6">
                             <label class="form-label fw-bold small text-uppercase text-muted">Nueva contraseña</label>
                             <div class="input-group">
+                                <span class="input-group-text bg-light"><i class="bi bi-key"></i></span>
                                 <input type="password" class="form-control" id="passEdit{{ u.id }}" name="password"
                                     minlength="6" placeholder="Dejar en blanco para conservar">
                                 <button class="btn btn-outline-secondary bg-white border-start-0" type="button"
-                                    onclick="togglePassword('passEdit{{ u.id }}', this)">
+                                    onclick="togglePassword('passEdit{{ u.id }}', this)" style="border-color: #dee2e6;">
                                     <i class="bi bi-eye text-secondary"></i>
                                 </button>
                             </div>
@@ -166,10 +167,12 @@
                             <label class="form-label fw-bold small text-uppercase text-muted">Confirmar
                                 contraseña</label>
                             <div class="input-group">
+                                <span class="input-group-text bg-light"><i class="bi bi-key"></i></span>
                                 <input type="password" class="form-control" id="passConfEdit{{ u.id }}" name="password2"
                                     minlength="6" placeholder="Repita la nueva contraseña">
                                 <button class="btn btn-outline-secondary bg-white border-start-0" type="button"
-                                    onclick="togglePassword('passConfEdit{{ u.id }}', this)">
+                                    onclick="togglePassword('passConfEdit{{ u.id }}', this)"
+                                    style="border-color: #dee2e6;">
                                     <i class="bi bi-eye text-secondary"></i>
                                 </button>
                             </div>
@@ -250,8 +253,12 @@
                             <label class="form-label fw-bold small">Contraseña</label>
                             <div class="input-group">
                                 <span class="input-group-text bg-light"><i class="bi bi-key"></i></span>
-                                <input type="password" name="password" class="form-control" required
+                                <input type="password" id="password" name="password" class="form-control" required
                                     placeholder="••••••••">
+                                <button class="btn btn-outline-secondary bg-white border-start-0" type="button"
+                                    onclick="togglePassword('password', this)" style="border-color: #dee2e6;">
+                                    <i class="bi bi-eye text-secondary"></i>
+                                </button>
                             </div>
                         </div>
 
