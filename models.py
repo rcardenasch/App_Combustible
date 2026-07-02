@@ -111,7 +111,6 @@ class Proyecto(db.Model):
     vehiculos = db.relationship("Vehiculo", backref="proyecto", lazy=True)
     tanques = db.relationship("Tanque", backref="proyecto", lazy=True)
 
-
 # =========================
 # VEHICULOS / MAQUINARIA
 # =========================
@@ -151,7 +150,6 @@ class Operador(db.Model):
 
     proyecto = db.relationship("Proyecto", backref="operadores")
 
-
 # =========================
 # TANQUES
 # =========================
@@ -168,7 +166,6 @@ class Tanque(db.Model):
     proyecto_id = db.Column(db.Integer, db.ForeignKey("proyectos.id"))
 
     kardex = db.relationship("Kardex", backref="tanque", lazy=True)
-
 
 # =========================
 # KARDEX (MOVIMIENTOS)
@@ -276,8 +273,6 @@ class Rendimiento(db.Model):
         "Kardex",
         backref="rendimiento"
     )
-
-
 
 # =========================
 # ALERTAS (OPCIONAL PERO PRO)

@@ -253,7 +253,6 @@ def usuarios_list():
     #return "SI FUNCIONA USUARIOS"
     return render_template(
         "usuarios.html",
-        #lista=Usuario.query.all(),
         lista = db.session.query(Usuario).options(joinedload(Usuario.roles)).all(), # aoptimiza consulta vs Usuario.query.all()
         roles=Role.query.all()
     )
@@ -330,16 +329,19 @@ def usuarios_nuevo():
 
 @app.route("/usuarios/editar/<int:id>", methods=["POST"])
 @login_required
-@permission_required("usuarios","editar")
+@permission_required("usuarios", "editar")
 def usuarios_editar(id):
     usuario = Usuario.query.get_or_404(id)
 
     try:
-        username = request.form.get("username")
-        email = request.form.get("email")
-        full_name = request.form.get("full_name")
-        roles_ids = request.form.getlist("roles")
-        proyectos_ids=request.form.getlist("proyectos")
+        username = request.form.get("username", "").strip()
+        email = request.form.get("email", "").strip()
+        full_name = request.form.get("full_name", "").strip()
+        password = request.form.get("password", "").strip()
+        password2 = request.form.get("password2", "").strip()
+
+        roles_ids = request.form.getlist("roles")   
+        proyecto_id= request.form.getlist("proyecto")
 
         # -------------------------
         # VALIDACIONES
@@ -348,18 +350,31 @@ def usuarios_editar(id):
             flash("El username es obligatorio", "danger")
             return redirect(url_for("usuarios_list"))
 
-        # Validar username único (excepto el mismo usuario)
-        existe = Usuario.query.filter(Usuario.username == username, Usuario.id != id).first()
+        # Username único
+        existe = Usuario.query.filter(
+            Usuario.username == username,
+            Usuario.id != id
+        ).first()
+
         if existe:
             flash("El username ya está en uso", "warning")
             return redirect(url_for("usuarios_list"))
 
-        # Validar email único
+        # Email único
         if email:
-            existe_email = Usuario.query.filter(Usuario.email == email, Usuario.id != id).first()
+            existe_email = Usuario.query.filter(
+                Usuario.email == email,
+                Usuario.id != id
+            ).first()
+
             if existe_email:
                 flash("El email ya está en uso", "warning")
                 return redirect(url_for("usuarios_list"))
+
+        # Validar contraseña (solo si se desea cambiar)
+        if password and len(password) < 6:
+            flash("La contraseña debe tener al menos 6 caracteres.", "warning")
+            return redirect(url_for("usuarios_list"))
 
         # -------------------------
         # ACTUALIZAR DATOS
@@ -368,23 +383,41 @@ def usuarios_editar(id):
         usuario.email = email
         usuario.full_name = full_name
 
+        # Actualizar contraseña solo si se ingresó una nueva
+        password = request.form.get("password", "").strip()
+        password2 = request.form.get("password2", "").strip()
+
+        if password:
+            if password != password2:
+                flash("Las contraseñas no coinciden.", "warning")
+                return redirect(url_for("usuarios_list"))
+
+            if len(password) < 6:
+                flash("La contraseña debe tener al menos 6 caracteres.", "warning")
+                return redirect(url_for("usuarios_list"))
+
+            usuario.set_password(password)
+
         # -------------------------
         # ACTUALIZAR ROLES
         # -------------------------
-        usuario.roles = []  # limpiar roles actuales
+        usuario.roles = []
 
         if roles_ids:
-            roles = Role.query.filter(Role.id.in_(roles_ids)).all()
-            usuario.roles = roles
+            usuario.roles = Role.query.filter(
+                Role.id.in_(roles_ids)
+            ).all()
+
         # -------------------------
-        # ACTUALIZAR proyectos
+        # ACTUALIZAR PROYECTO
         # -------------------------
-        if proyectos_ids:
-            proyectos = Proyecto.query.filter(Proyecto.id.in_(proyectos_ids)).all()
-            usuario.proyectos = proyectos    
+        usuario.proyecto = None
+
+        if proyecto_id:
+            usuario.proyecto = Proyecto.query.get(int(proyecto_id))
 
         db.session.commit()
-        flash("Usuario actualizado correctamente", "success")
+        flash("Usuario actualizado correctamente.", "success")
 
     except Exception as e:
         db.session.rollback()
