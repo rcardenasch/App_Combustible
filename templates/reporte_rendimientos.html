@@ -20,145 +20,74 @@
     </div>
 
 
-    <form method="GET" action="{{ url_for('reporte_rendimientos') }}" class="row g-3">
+    <form method="GET" action="{{ url_for('reporte_rendimientos') }}" class="row g-3 align-items-end">
 
         <!-- Proyecto -->
-        <div class="col-md-4">
-
-            <label class="form-label fw-semibold text-secondary small">
-                Proyecto
-            </label>
-
-            <div class="input-group">
-
+        <div class="col-xl-3 col-md-6">
+            <label class="form-label fw-bold small text-uppercase text-muted">Proyecto</label>
+            <div class="input-group shadow-sm-hover">
                 <span class="input-group-text bg-light border-end-0">
-                    <i class="bi bi-building"></i>
+                    <i class="bi bi-building border-end-2"></i>
                 </span>
-
-                <select name="proyecto" class="form-select border-start-0 ps-0">
-
-                    <option value="">
-                        Todos
-                    </option>
-
+                <select name="proyecto" class="form-select border-start-0 ps-1 text-dark">
+                    <option value="">Todos los proyectos</option>
                     {% for p in proyectos %}
-                    <option value="{{ p.id }}">
-                        {{ p.nombre }}
-                    </option>
+                    <option value="{{ p.id }}">{{ p.nombre }}</option>
                     {% endfor %}
-
                 </select>
-
             </div>
-
         </div>
 
         <!-- Vehículo -->
-        <div class="col-md-4">
-
-            <label class="form-label fw-semibold text-secondary small">
-                Vehículo
-            </label>
-
-            <div class="input-group">
-
+        <div class="col-xl-3 col-md-6">
+            <label class="form-label fw-bold small text-uppercase text-muted">Vehículo</label>
+            <div class="input-group shadow-sm-hover">
                 <span class="input-group-text bg-light border-end-0">
                     <i class="bi bi-truck"></i>
                 </span>
 
-                <select name="vehiculo" class="form-select border-start-0 ps-0">
-
-                    <option value="">
-                        Todos
-                    </option>
-
+                <select name="vehiculo" class="form-select border-start-0 ps-1 text-dark">
+                    <option value="">Todos los vehículos</option>
                     {% for v in vehiculos %}
-                    <option value="{{ v.id }}">
-                        {{ v.nombre }}
-                    </option>
+                    <option value="{{ v.id }}">{{ v.nombre }}</option>
                     {% endfor %}
-
                 </select>
-
             </div>
-
         </div>
 
-        <!-- Tipo -->
-        <div class="col-md-4">
-
-            <label class="form-label fw-semibold text-secondary small">
-                Tipo de reporte
-            </label>
-
-            <div class="input-group">
-
+        <!-- Fecha Inicial -->
+        <div class="col-xl-2 col-md-6">
+            <label class="form-label fw-bold small text-uppercase text-muted">Fecha Inicio</label>
+            <div class="input-group shadow-sm-hover">
                 <span class="input-group-text bg-light border-end-0">
-                    <i class="bi bi-calendar-range"></i>
+                    <i class="bi bi-calendar3"></i>
                 </span>
-
-                <select name="tipo" class="form-select border-start-0 ps-0" required>
-                    <option value="semanal">
-                        Semanal
-                    </option>
-
-                    <option value="mensual">
-                        Mensual
-                    </option>
-
-                    <option value="anual">
-                        Anual
-                    </option>
-
-                    <option value="personalizado">
-                        Rango de fechas
-                    </option>
-
-                </select>
-
+                <input type="date" name="inicio" class="form-control border-start-0 ps-1 text-dark">
             </div>
-
         </div>
 
-        <div class="row g-3 align-items-end">
-
-            <!-- Fecha Inicial -->
-            <div class="col-md-4">
-                <label class="form-label fw-semibold text-secondary small">
-                    Fecha Inicio
-                </label>
-                <div class="input-group">
-                    <span class="input-group-text bg-light border-end-0">
-                        <i class="bi bi-calendar3"></i>
-                    </span>
-                    <input type="date" name="inicio" class="form-control border-start-0 ps-0">
-                </div>
+        <!-- Fecha Final -->
+        <div class="col-xl-2 col-md-6">
+            <label class="form-label fw-bold small text-uppercase text-muted">Fecha Fin</label>
+            <div class="input-group shadow-sm-hover">
+                <span class="input-group-text bg-light border-end-0">
+                    <i class="bi bi-calendar3"></i>
+                </span>
+                <input type="date" name="fin" class="form-control border-start-0 ps-1 text-dark">
             </div>
-
-            <!-- Fecha Final -->
-            <div class="col-md-4">
-                <label class="form-label fw-semibold text-secondary small">
-                    Fecha Fin
-                </label>
-                <div class="input-group">
-                    <span class="input-group-text bg-light border-end-0">
-                        <i class="bi bi-calendar3"></i>
-                    </span>
-                    <input type="date" name="fin" class="form-control border-start-0 ps-0">
-                </div>
-            </div>
-
-            <!-- Botón -->
-            <div class="col-md-3 col-sm-6 col-12">
-                <button type="submit"
-                    class="btn btn-success w-100 fw-semibold d-inline-flex align-items-center justify-content-center gap-2 rounded-3 shadow-sm py-2">
-                    <i class="bi bi-filetype-xls fs-5"></i>
-                    Exportar Excel
-                </button>
-            </div>
-
         </div>
+
+        <!-- Botón de Acción -->
+        <div class="col-xl-2 col-md-12">
+            <button type="submit"
+                class="btn btn-success w-100 fw-bold d-inline-flex align-items-center justify-content-center gap-2 py-2 shadow-sm transition-base">
+                <i class="bi bi-filetype-xls fs-5"></i>
+                Exportar Excel
+            </button>
+        </div>
+
     </form>
+
 
 </div>
 

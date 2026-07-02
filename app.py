@@ -2033,7 +2033,7 @@ def reporte_consumos():
     )
 
 #=================================================================
-# Reporte de abasteciientos y rendimientos Excel
+# Reporte de abastecimientos y rendimientos Excel
 #=================================================================
 @app.route("/reportes/rendimientos")
 @login_required
@@ -2129,11 +2129,11 @@ def reporte_rendimientos():
 
     # Hoja activa
     ws = wb.active
-    ws.title = "Reporte_Consumo_Rendimientos"
+    ws.title = "Reporte"
 
     # Título
     ws.merge_cells("A1:L1")
-    ws["A1"] = "REPORTE DE RENDIMIENTO DE MAQUINARIA"
+    ws["A1"] = "REPORTE DE CONSUMO Y RENDIMIENTO DE MAQUINARIA"
     ws["A1"].font = Font(bold=True, size=14)
     ws["A1"].alignment = Alignment(horizontal="center")
 
@@ -2270,7 +2270,7 @@ def reporte_rendimientos():
     return send_file(
         output,
         as_attachment=True,
-        download_name="reporte_consumo_rendimientos.xlsx",
+        download_name="Reporte_Consumo_Rendimiento.xlsx",
         mimetype="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
     )
 
