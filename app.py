@@ -271,7 +271,7 @@ def usuarios_nuevo():
         full_name = request.form.get("full_name")
         roles_ids = request.form.getlist("roles")  # 👈 importante
         proyecto_ids=request.form.getlist("proyectos")
-
+        
         # -------------------------
         # VALIDACIONES
         # -------------------------
@@ -342,6 +342,7 @@ def usuarios_editar(id):
 
         roles_ids = request.form.getlist("roles")   
         proyecto_id= request.form.getlist("proyecto")
+        
 
         # -------------------------
         # VALIDACIONES
@@ -1708,8 +1709,8 @@ def vista_reporte_consumos():
 @permission_required("reportes","ver")
 def reporte_consumos():
 
-    vehiculo = request.args.get("vehiculo")
-    proyecto = request.args.get("proyecto")
+    vehiculo = int(request.args.get("vehiculo")) if request.args.get("vehiculo") else None
+    proyecto = int(request.args.get("proyecto")) if request.args.get("proyecto") else None
     tipo = request.args.get("tipo")
     fecha_str = request.args.get("fecha")
 
@@ -2074,10 +2075,19 @@ def vista_reporte_rendimientos():
 @login_required
 @permission_required("reportes","ver")
 def reporte_rendimientos():
-    vehiculo = request.args.get("vehiculo")
-    proyecto = request.args.get("proyecto")
+    vehiculo = int(request.args.get("vehiculo")) if request.args.get("vehiculo") else None
+    proyecto = int(request.args.get("proyecto")) if request.args.get("proyecto") else None
     inicio = request.args.get("inicio")
     fin = request.args.get("fin")
+
+    # Por esto:
+    fecha_inicio_str = request.args.get('inicio')
+    fecha_fin_str = request.args.get('fin')
+
+    # Convertir a objetos de tipo fecha
+    inicio = datetime.strptime(fecha_inicio_str, '%Y-%m-%d').date() if fecha_inicio_str else None
+    fin = datetime.strptime(fecha_fin_str, '%Y-%m-%d').date() if fecha_fin_str else None
+    
 
     query = Kardex.query.filter(
     Kardex.tipo == "SALIDA",
