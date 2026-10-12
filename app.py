@@ -2330,10 +2330,6 @@ def dashboard_gerencial():
 
     stock_total = query_tanque.scalar() or 0
 
-    total_tanques = Tanque.query.count()
-
-    total_vehiculos = Vehiculo.query.count()
-
     balance = total_compras - total_consumo
 
     # ==========================
@@ -2396,23 +2392,62 @@ def dashboard_gerencial():
         Kardex.fecha.desc()
     ).limit(20).all()
 
-    # ==================================================================
-    # 💰 NUEVO: VALORIZACIONES ECONÓMICAS (GERENCIALES)
-    # ==================================================================
-    # Suma total de costo_total invertido/gastado en las salidas de combustible activas
-    valor_consumo_scalar = db.session.query(func.sum(Kardex.costo_total)).filter(
-        Kardex.tipo == "SALIDA", *filtro
-    ).scalar()
-    valor_total_consumo = float(valor_consumo_scalar) if valor_consumo_scalar else 0.0
 
-    # Valorización monetaria del inventario actual en tanques (Stock * Precio Promedio Ponderado)
-    # Usamos db.session.query para hacer la matemática directa y veloz en la base de datos
-    valor_inventario_scalar = db.session.query(
-        func.sum(Tanque.stock_actual * Tanque.precio_promedio)
-    ).scalar()
-    valor_total_inventario = float(valor_inventario_scalar) if valor_inventario_scalar else 0.0
+    # ==========================================================
+    # VALORIZACIONES ECONÓMICAS POR PROYECTO
+    # ==========================================================
 
-    print(movimientos)
+    # 1. Valor del consumo de combustible
+    query_consumo = db.session.query(
+        func.sum(Kardex.costo_total)
+    ).filter(
+        Kardex.tipo == "SALIDA",
+        *filtro
+    )
+
+    valor_consumo_scalar = query_consumo.scalar() or 0
+    valor_total_consumo = float(valor_consumo_scalar)
+
+
+    # 2. Valor del inventario actual
+    # Stock actual × precio promedio de cada tanque
+    query_inventario = db.session.query(
+        func.sum(
+            Tanque.stock_actual * Tanque.precio_promedio
+        )
+    )
+
+    # Aplicar el mismo proyecto seleccionado
+    if proyecto_id:
+        query_inventario = query_inventario.filter(
+            Tanque.proyecto_id == proyecto_id
+        )
+
+    valor_inventario_scalar = query_inventario.scalar() or 0
+    valor_total_inventario = float(valor_inventario_scalar)
+
+
+    # 3. Cantidad de tanques del proyecto
+    query_tanques = Tanque.query
+
+    if proyecto_id:
+        query_tanques = query_tanques.filter(
+            Tanque.proyecto_id == proyecto_id
+        )
+
+    total_tanques = query_tanques.count()
+
+
+    # 4. Cantidad de vehículos del proyecto
+    query_vehiculos = Vehiculo.query
+
+    if proyecto_id:
+        query_vehiculos = query_vehiculos.filter(
+            Vehiculo.proyecto_id == proyecto_id
+        )
+
+    total_vehiculos = query_vehiculos.count()
+
     
     return render_template(
         "dashboard_gerencial.html",
