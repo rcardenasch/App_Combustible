@@ -1709,8 +1709,8 @@ def vista_reporte_consumos():
 @permission_required("reportes","ver")
 def reporte_consumos():
 
-    vehiculo = request.args.get("vehiculo")
-    proyecto = request.args.get("proyecto")
+    vehiculo = int(request.args.get("vehiculo")) if request.args.get("vehiculo") else None
+    proyecto = int(request.args.get("proyecto")) if request.args.get("proyecto") else None
     tipo = request.args.get("tipo")
     fecha_str = request.args.get("fecha")
 
