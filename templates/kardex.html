@@ -108,7 +108,7 @@
         <div class="table-responsive">
             <table class="table table-hover align-middle mb-0 datatable">
                 <thead class="bg-light text-secondary">
-                    <tr> 
+                    <tr>
                         <th class="ps-4 text-uppercase small fw-bold">Fecha / Hora</th>
                         <th class="py-3 text-uppercase small fw-bold">Operación</th>
                         <th class="py-3 text-uppercase small fw-bold">Vehículo / Equipo</th>
@@ -163,7 +163,8 @@
                             <span class="text-muted small"> gls</span>
                         </td>
                         <td class="text-center">
-                            <span class="badge bg-dark-subtle text-dark fw-medium">S/ {{ "{:,.2f}".format(k.precio_unitario) or '-' }}</span>
+                            <span class="badge bg-dark-subtle text-dark fw-medium">S/ {{
+                                "{:,.2f}".format(k.precio_unitario) or '-' }}</span>
                         </td>
                         <td class="text-center">
                             {% if k.horometro_inicial %}
@@ -236,7 +237,7 @@
                                     --Seleccione Proyecto--
                                 </option>
                                 {% for t in proyectos %}
-                                <option value="{{ t.id }}" {% if loop.first %}selected{% endif %}>
+                                <option value="{{ t.id }}" {% if proyecto_seleccionado==t.id %}selected{% endif %}>
                                     {{ t.nombre_corto }}
                                 </option>
                                 {% endfor %}
@@ -284,8 +285,8 @@
                                 <span class="input-group-text bg-white"><i class="bi bi-moisture text-info"></i></span>
                                 <select name="tanque_id" id="tanque" class="form-select">
                                     {% for t in tanques %}
-                                    <option value="{{ t.id }}" data-stock="{{ t.stock_actual }}" {% if loop.first
-                                        %}selected{% endif %}>
+                                    <option value="{{ t.id }}" data-stock="{{ t.stock_actual }}"
+                                        data-proyecto-id="{{ t.proyecto_id }}" {% if loop.first %}selected{% endif %}>
                                         {{ t.nombre }} (Disponible: {{ t.stock_actual }} Gls)
                                     </option>
                                     {% endfor %}
@@ -301,7 +302,8 @@
                                 <select name="vehiculo_id" id="vehiculo" class="form-select">
                                     <option value="">Seleccione Vehículo</option>
                                     {% for v in vehiculos %}
-                                    <option value="{{ v.id }}">{{ v.nombre }}</option>
+                                    <option value="{{ v.id }}" data-proyecto-id="{{ v.proyecto_id }}">{{ v.nombre }}
+                                    </option>
                                     {% endfor %}
                                 </select>
                             </div>
@@ -313,10 +315,12 @@
                         <!-- OPERADOR -->
                         <div class="col-md-4">
                             <label class="form-label fw-semibold">Responsable / Operador</label>
-                            <select name="operador_id" class="form-select">
+                            <select name="operador_id" id="operador" class="form-select">
                                 <option value="">Seleccione Operador</option>
                                 {% for o in operadores %}
-                                <option value="{{ o.id }}">{{ o.nombre }}</option>
+                                <option value="{{ o.id }}" data-proyecto-id="{{ o.proyecto_id }}">
+                                    {{ o.nombre }}
+                                </option>
                                 {% endfor %}
                             </select>
                         </div>

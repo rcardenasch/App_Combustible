@@ -948,6 +948,59 @@ def tanques_eliminar(id):
 #--------------------------------------------------
 # KARDEX
 #--------------------------------------------------
+from flask import jsonify, abort
+from flask_login import login_required, current_user
+
+@app.route("/kardex/recursos_proyecto/<int:proyecto_id>")
+@login_required
+def kardex_recursos_proyecto(proyecto_id):
+
+    proyecto = Proyecto.query.filter_by(id=proyecto_id).first()
+
+    if not proyecto:
+        return jsonify({"error": "Proyecto no encontrado"}), 404
+
+    # Respetar el proyecto asignado al usuario
+    if current_user.proyecto_id and current_user.proyecto_id != proyecto_id:
+        abort(403)
+
+    tanques = Tanque.query.filter_by(
+        proyecto_id=proyecto_id
+    ).all()
+
+    vehiculos = Vehiculo.query.filter_by(
+        proyecto_id=proyecto_id
+    ).all()
+
+    operadores = Operador.query.filter_by(
+        proyecto_id=proyecto_id
+    ).all()
+
+    return jsonify({
+        "tanques": [
+            {
+                "id": t.id,
+                "nombre": t.nombre,
+                "stock_actual": float(t.stock_actual or 0)
+            }
+            for t in tanques
+        ],
+        "vehiculos": [
+            {
+                "id": v.id,
+                "nombre": v.nombre
+            }
+            for v in vehiculos
+        ],
+        "operadores": [
+            {
+                "id": o.id,
+                "nombre": o.nombre
+            }
+            for o in operadores
+        ]
+    })
+
 @app.route("/kardex")
 @login_required
 @permission_required("kardex", "ver")
@@ -1001,9 +1054,50 @@ def kardex_list():
             )
         )
 
-    proyectos = Proyecto.query.filter_by(
-    activo=True
+    #proyectos = Proyecto.query.filter_by(
+    #activo=True
+    #).all()
+
+    # Proyectos disponibles para el usuario
+    query_proyectos = Proyecto.query.filter_by(activo=True)
+
+    # Si el usuario está asignado a un proyecto,
+    # no debe operar en otro.
+    if current_user.proyecto_id:
+        query_proyectos = query_proyectos.filter(
+            Proyecto.id == current_user.proyecto_id
+        )
+
+    proyectos = query_proyectos.order_by(
+        Proyecto.nombre
     ).all()
+
+
+    # Proyecto que se utilizará como selección inicial
+    proyecto_seleccionado = (
+        current_user.proyecto_id
+        or request.args.get("proyecto_id", type=int)
+    )
+
+    if not proyecto_seleccionado and proyectos:
+        proyecto_seleccionado = proyectos[0].id
+
+    # Cargar solamente los recursos del proyecto inicial.
+    # El JS actualizará las listas cuando cambie el proyecto.
+    vehiculos = Vehiculo.query.filter_by(
+        activo=True,
+        proyecto_id=proyecto_seleccionado
+    ).order_by(Vehiculo.nombre.asc()).all()
+
+    tanques = Tanque.query.filter_by(
+        proyecto_id=proyecto_seleccionado
+    ).order_by(Tanque.nombre.asc()).all()
+
+    operadores = Operador.query.filter_by(
+        activo=True,
+        proyecto_id=proyecto_seleccionado
+    ).order_by(Operador.nombre.asc()).all()
+
 
     # Filtros del dashboard
     filtro = [
@@ -1018,10 +1112,11 @@ def kardex_list():
     return render_template(
         "kardex.html",
         lista=lista,#Kardex.query.filter(Kardex.activo == True).order_by(Kardex.fecha.desc()).all(),
-        proyectos=Proyecto.query.filter_by(activo=True).all(),
-        vehiculos=Vehiculo.query.filter_by(activo=True).order_by(Vehiculo.nombre.asc()).all(),
-        tanques=Tanque.query.all(),
-        operadores=Operador.query.all(),
+        proyectos=proyectos,
+        proyecto_seleccionado=proyecto_seleccionado,
+        vehiculos=vehiculos,
+        tanques=tanques,
+        operadores=operadores,
         fecha_actual=fecha_actual
     )
 
