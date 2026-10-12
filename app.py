@@ -7,7 +7,7 @@ from flask_login import LoginManager, login_user, logout_user, login_required, c
 from models import (db,Usuario, Role, Permission,Module,Proyecto,Vehiculo,Alerta,Operador,Kardex,Rendimiento,Tanque)
 from config import Config
 from functools import wraps
-from flask import jsonify
+from flask import jsonify, abort
 import os
 from werkzeug.utils import secure_filename
 from flask import get_flashed_messages
@@ -948,8 +948,6 @@ def tanques_eliminar(id):
 #--------------------------------------------------
 # KARDEX
 #--------------------------------------------------
-from flask import jsonify, abort
-from flask_login import login_required, current_user
 
 @app.route("/kardex/recursos_proyecto/<int:proyecto_id>")
 @login_required
