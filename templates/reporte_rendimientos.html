@@ -30,9 +30,13 @@
                     <i class="bi bi-building border-end-2"></i>
                 </span>
                 <select name="proyecto" class="form-select border-start-0 ps-1 text-dark">
-                    <option value="">Todos los proyectos</option>
+                    <option value="">Todos</option>
+                    {% set selected_id = request.args.get('proyecto_id') %}
                     {% for p in proyectos %}
-                    <option value="{{ p.id }}">{{ p.nombre }}</option>
+                <option value="{{ p.id }}" 
+                    {% if selected_id == p.id|string or (selected_id is none and loop.first) %}selected{% endif %}>
+                    {{ p.nombre }}
+                </option>
                     {% endfor %}
                 </select>
             </div>
