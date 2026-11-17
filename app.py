@@ -1432,7 +1432,8 @@ def kardex_nuevo():
                             alerta = Alerta(
                                 tipo="RENDIMIENTO_BAJO",
                                 mensaje=f"Vehículo {vehiculo_id} bajo rendimiento: {rendimiento:.2f} Gls/H",
-                                vehiculo_id=vehiculo_id
+                                vehiculo_id=vehiculo_id,
+                                proyecto_id=nuevo.proyecto_id
                             )
                             db.session.add(alerta)
             
@@ -1701,7 +1702,8 @@ def recalcular_rendimientos_vehiculo(vehiculo_id):
             alerta = Alerta(
                 tipo="RENDIMIENTO_BAJO",
                 mensaje=f"Vehículo {vehiculo_id} bajo rendimiento detectado en recálculo",
-                vehiculo_id=vehiculo_id
+                vehiculo_id=vehiculo_id,
+                proyecto_id=actual.proyecto_id
             )
             db.session.add(alerta)
 
