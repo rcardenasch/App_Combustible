@@ -2655,9 +2655,12 @@ def dashboard_operativo():
     # ==================================================================
     # Alertas activas de rendimiento deficiente para el operador
     alertas_criticas = db.session.scalar(
-        db.select(func.count(Alerta.id)).where(Alerta.tipo == "RENDIMIENTO_BAJO")
+    db.select(func.count(Alerta.id)).where(
+        Alerta.tipo == "RENDIMIENTO_BAJO",
+        Alerta.proyecto_id == proyecto_id
+    )
     ) or 0
-
+    
     # Lista de tanques que están por debajo del 20% de su capacidad total
     tanques_criticos = db.session.scalars(
         db.select(Tanque).where(Tanque.stock_actual <= (Tanque.capacidad * 0.20))
