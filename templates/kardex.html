@@ -239,7 +239,7 @@
                                 </option>
                                 {% set selected_id = request.args.get('proyecto_id') %}
                                 {% for t in proyectos %}
-                                     <option value="{{ t.id }}" {% if selected_id == t.id|string or (selected_id is none and loop.first) %}selected{% endif
+                                     <option value="{{ t.id }}" {% if selected_id == t.id|string or (selected_id is none and loop.last) %}selected{% endif
                                     %}>
                                     {{ t.nombre_corto }}
                                 </option>
