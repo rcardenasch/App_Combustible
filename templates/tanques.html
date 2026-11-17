@@ -322,19 +322,15 @@ MODAL NUEVO
 
                             <select name="proyecto_id" class="form-select border-warning-subtle shadow-sm" required>
 
-                                <option value="">
-                                    Seleccionar Proyecto
-                                </option>
-
+                                <option value="">Seleccionar</option>
+                                {% set selected_id = request.args.get('proyecto_id') %}
                                 {% for p in proyectos %}
-
-                                <option value="{{ p.id }}" {% if proyecto_id==p.id %} selected {% endif %}>
+                                <option value="{{ p.id }}" 
+                                    {% if selected_id == p.id|string or (selected_id is none and loop.first) %}selected{% endif %}>
                                     {{ p.nombre }}
-                                </option>
-
-                                {% endfor %}
-
-                            </select>
+                                </option> 
+                                {% endfor %}   
+                            </select>                                      
 
                         </div>
 

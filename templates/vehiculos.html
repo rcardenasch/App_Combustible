@@ -200,8 +200,12 @@
                         <label class="form-label fw-bold text-secondary small text-uppercase">Asignación</label>
                         <select name="proyecto_id" class="form-select form-select-lg border-primary-subtle" required>
                             <option value="" selected disabled>Seleccionar Proyecto...</option>
+                            {% set selected_id = request.args.get('proyecto_id') %}
                             {% for p in proyectos %}
-                            <option value="{{p.id}}">{{p.nombre}}</option>
+                            <option value="{{ p.id }}" 
+                            {% if selected_id == p.id|string or (selected_id is none and loop.first) %}selected{% endif %}>
+                            {{ p.nombre }}
+                            </option>
                             {% endfor %}
                         </select>
                     </div>
